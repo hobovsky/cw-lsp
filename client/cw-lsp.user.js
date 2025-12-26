@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-21-002
+// @version      2025-12-21-003
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -69,11 +69,16 @@
 
         function getDisplayText(lspCompletionItem) {
 
+            let label = `${lspCompletionItem.label}${lspCompletionItem.labelDetails?.detail ?? ""}`;
+
             if(lspCompletionItem.kind === 2 && lspCompletionItem.detail) {
-                return `${lspCompletionItem.label}: ${lspCompletionItem.detail}`;
+                return `${label}: ${lspCompletionItem.detail}`;
+            }
+            if(lspCompletionItem.kind === 3 && lspCompletionItem.detail) {
+                return `${label}: ${lspCompletionItem.detail}`;
             }
 
-            return lspCompletionItem.label;
+            return label;
         }
 
         function getText(lspCompletionItem) {
