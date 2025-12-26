@@ -11,7 +11,18 @@ import type {
 import { spawn } from "child_process";
 import type { LanguageServerSession } from "./index.js";
 
-const pythonUri = "file:///c:/temp/python-lsp/scratch-lsp/src/solution.py";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+
+const TEMPLATES = process.env.LSP_TEMPLATES_DIR;
+if(!TEMPLATES)
+  throw Error("LSP_TEMPLATES_DIR not set");
+
+const pythonProjectRoot = path.join(TEMPLATES, "python");
+const pythonFile = path.join(pythonProjectRoot, "solution.py");
+
+const pythonUri = pathToFileURL(pythonFile).toString();
+const projectRoot = pathToFileURL(pythonProjectRoot).toString();
 
 export async function initPythonLsp(): Promise<LanguageServerSession> {
 
@@ -38,13 +49,12 @@ export async function initPythonLsp(): Promise<LanguageServerSession> {
     console.warn("pyright LSP msg:", JSON.stringify(m, null, 2))
   );
 
-  const projectRoot = "file:///c:/temp/python-lsp/scratch-lsp";
   connection.listen();
 
   const params: InitializeParams = {
     processId: process.pid,
     rootUri: projectRoot,
-    workspaceFolders: [{ uri: projectRoot, name: "scratch-lsp" }],
+    workspaceFolders: [ { uri: projectRoot, name: "python" } ],
     initializationOptions: {
       serverStatusNotification: "On",
     },

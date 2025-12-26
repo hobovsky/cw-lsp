@@ -11,7 +11,18 @@ import type {
 import { spawn } from "child_process";
 import type { LanguageServerSession } from "./index.js";
 
-const rustUri = "file:///c:/temp/rust-lsp/scratch-lsp/src/lib.rs";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+
+const TEMPLATES = process.env.LSP_TEMPLATES_DIR;
+if(!TEMPLATES)
+  throw Error("LSP_TEMPLATES_DIR not set");
+
+const rustProjectRoot = path.join(TEMPLATES, "rust");
+const rustFile = path.join(rustProjectRoot, "src", "main.rs");
+
+const rustUri = pathToFileURL(rustFile).toString();
+const projectRoot = pathToFileURL(rustProjectRoot).toString();
 
 export async function initRustLsp(): Promise<LanguageServerSession> {
 
@@ -32,8 +43,6 @@ export async function initRustLsp(): Promise<LanguageServerSession> {
   connection.onNotification("window/showMessage", (m: unknown) =>
     console.warn("rust LSP msg:", JSON.stringify(m, null, 2))
   );
-
-  const projectRoot = "file:///c:/temp/rust-lsp/scratch-lsp";
   
   // Wait until rust-analyzer announces it is ready before requesting completion.
   const ready = new Promise<void>((resolve) => {
@@ -48,7 +57,7 @@ export async function initRustLsp(): Promise<LanguageServerSession> {
   const params: InitializeParams = {
     processId: process.pid,
     rootUri: projectRoot,
-    workspaceFolders: [{ uri: projectRoot, name: "scratch-lsp" }],
+    workspaceFolders: [{ uri: projectRoot, name: "rust" }],
     initializationOptions: {
       serverStatusNotification: "On",
     },

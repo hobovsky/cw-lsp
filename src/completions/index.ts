@@ -41,7 +41,6 @@ export async function getCompletions(lspSessionKey: LspSessionKey, code: string,
     list = list?.items;
 
   console.info(`LSP reported ${list.length} completion items.`);
-  console.info("Raw completions: ", JSON.stringify(list, null, 2));
 
   return list;
 }
