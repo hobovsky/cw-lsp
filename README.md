@@ -6,7 +6,9 @@ To use code completion when training on a Codewars kata, only the client userscr
 
 - Install Tampermonkey user script with client side implementation. It can be found in `client/cw-lsp.user.js`. Read [TamperMonkey FAQ](https://www.tampermonkey.net/faq.php?locale=en) for help. Remember about enabling [userscript permissions and/or Development Mode](https://www.tampermonkey.net/faq.php?locale=en#Q209) if your browser requires it!
 - Open kata trainer for PHP, Python, or Rust. Other languages are currently not supported, but planned.
-- Start typing code in the `Solution` editor. Use `Shift+Space` to trigger completion suggestions.
+- Start typing code in the `Solution` editor. Use one of following combinations:
+  - `Shift-Space` to trigger completion suggestions.
+  - `Alt-A` to trigget signature hints.
 
 **NOTE:** Currently, changing trained language inside of kata trainer does not switch the language of the backing language server process, and LSP results returned by it do not match currently open language. Language server session needs to be reinitialized with `Ctrl+F5` after changing currently trained language.
 

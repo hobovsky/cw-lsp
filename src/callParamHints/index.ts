@@ -1,6 +1,6 @@
 import { ensureLspSession, type LspSessionKey } from "../sessions/index.js";
 
-export async function getCompletions(lspSessionKey: LspSessionKey, code: string, language: string, line: number, charPos: number): Promise<string[]> {
+export async function getCallParamHints(lspSessionKey: LspSessionKey, code: string, language: string, line: number, charPos: number): Promise<string[]> {
 
   let lspSession = await ensureLspSession(lspSessionKey);
   if(!lspSession) {
@@ -25,22 +25,21 @@ export async function getCompletions(lspSessionKey: LspSessionKey, code: string,
 
   console.log("Requesting completion...");
   const completion = await connection.sendRequest(
-    "textDocument/completion",
+    "textDocument/signatureHelp",
     {
       textDocument: { uri: docUri },
       position: completionPosition,
       context: {
         triggerKind: 1, // Invoked
+        isRetrigger: false
       },
     }
   );
 
 
-  let list = completion as any;
-  if(!Array.isArray(list))
-    list = list?.items;
+  let list = (completion as any)?.signatures;
 
-  console.info(`LSP reported ${list?.length} completion items.`);
+  console.info(`LSP reported ${list?.length} signatures.`);
 
   return list;
 }

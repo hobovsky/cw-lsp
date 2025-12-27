@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-21-003
+// @version      2025-12-21-004
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -25,7 +25,7 @@
     var $ = window.jQuery;
     $.noConflict();
 
-    async function myHint(cm) {
+    async function hintCodeCompletion(cm) {
         if(cm.somethingSelected()) {
             console.info("Selection detected, bailing out...");
             return null;
@@ -133,6 +133,77 @@
         };
     }
 
+    async function hintCallParams(cm) {
+        if(cm.somethingSelected()) {
+            console.info("Selection detected, bailing out...");
+            return null;
+        }
+
+        function getLspSession() {
+            let url = window.location.pathname.split('/');
+            return {
+                language: url[4],
+                userId: App.instance.currentUser.id,
+                kataId: url[2],
+                editorId: jQuery("#code .CodeMirror")[0].dataset.lspEditorId
+            };
+        }
+
+        const cursor = cm.getCursor();
+        const line = cursor.line;
+        const pos = cursor.ch;
+
+        let code = cm.getValue();
+        let lang = cm.options.mode;
+
+        let lspSession = getLspSession();
+
+        let response = await GM.xmlHttpRequest({
+            method: "POST",
+            url: lspServiceUrl + "/get_call_params",
+            responseType: 'json',
+            headers: {
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({
+                lspSession,code,line,pos
+            })
+        });
+
+        if(response.status !== 200) {
+            console.log("Request failed with status ", response.status);
+            return;
+        }
+
+        function getDisplayText(lspCompletionItem) {
+            return lspCompletionItem.label;
+        }
+
+        function getText(lspCompletionItem) {
+            return lspCompletionItem.label;
+        }
+
+        function makeCompletions(lspCompletions) {
+            return lspCompletions.map(c => ({
+                text: getText(c),
+                displayText: getDisplayText(c),
+                lspItem: c,
+                hint: function(cm, data, completion) {
+                    // let lspItem = completion.lspItem;
+                    //cm.replaceRange(lspItem.label, cursor);
+                }
+            }));
+        }
+
+        let lspResponse = response.response;
+        console.info(JSON.stringify(lspResponse, null, 2));
+        return {
+            list: makeCompletions(lspResponse.callParamHints),
+            from: cursor,
+            to: cursor
+        };
+    }
+
     const supportedLangs = ["php", "python", "rust"];
 
     async function initLsp(kataId, language, editorId, userId) {
@@ -176,8 +247,10 @@
 
         editor.addKeyMap({
             "Shift-Space": function (cm) {
-                cm.showHint({ hint: myHint,
-                            completeSingle: false });
+                cm.showHint({ hint: hintCodeCompletion, completeSingle: false });
+            },
+            "Alt-A": function (cm) {
+                cm.showHint({ hint: hintCallParams, completeSingle: false, closeCharacters: /[)\]]/ });
             }
         });
     });

@@ -2,6 +2,7 @@ import express from 'express';
 
 import { getCompletions } from "./completions/index.js";
 import { ensureLspSession } from './sessions/index.js';
+import { getCallParamHints } from './callParamHints/index.js';
 
 const app = express();
 app.use(express.json());
@@ -51,6 +52,23 @@ app.post('/get_completions', async (req, res) => {
     let completions = await getCompletions(lspSession, code, lspSession.language, line, pos);
     let response = {
         completions
+    }
+    res.send(response);
+});
+
+app.post('/get_call_params', async (req, res) => {
+    console.info("get_call_params request received.");
+
+    const { code, lspSession, line, pos } = req.body as {
+      code: string;
+      lspSession: { language: string, userId: string, kataId: string, editorId: string };
+      line: number;
+      pos: number;
+    };    
+
+    let callParamHints = await getCallParamHints(lspSession, code, lspSession.language, line, pos);
+    let response = {
+        callParamHints
     }
     res.send(response);
 });
