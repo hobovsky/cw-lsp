@@ -23,7 +23,7 @@ WORKDIR /opt/lsp-templates
 ## Rust template
 RUN mkdir rust \
  && cd rust \
- && cargo init --bin --name solution
+ && cargo init --lib --name solution
 
 ## Python template
 RUN mkdir python \

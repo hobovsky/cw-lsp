@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-21-005
+// @version      2025-12-21-006
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @match        https://www.codewars.com/kata/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant GM.xmlHttpRequest
+// @grant GM_addStyle
 // @connect localhost
 // @connect self
 // @connect cw-lsp-hub.fly.dev
@@ -19,11 +20,42 @@
 (async function() {
     'use strict';
 
-    const lspServiceUrl = "http://localhost:3000";
-    const lspServiceUrl_  = "https://cw-lsp-hub.fly.dev";
+    const lspServiceUrl_ = "http://localhost:3000";
+    const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
 
     var $ = window.jQuery;
     $.noConflict();
+
+    GM_addStyle(`
+  .diagnostics {
+    width: 12px;
+  }
+
+  .cm-diagnostic-marker {
+    color: #d00;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1;
+  }
+
+.cm-squiggle-error {
+  text-decoration: underline wavy red;
+}
+
+.cm-squiggle-warning {
+  text-decoration: underline wavy orange;
+}
+
+.cm-squiggle-info {
+  text-decoration: underline wavy blue;
+}
+
+.cm-squiggle-hint {
+  text-decoration: underline wavy gray;
+}
+
+`);
 
     async function hintCodeCompletion(cm) {
         if(cm.somethingSelected()) {
@@ -44,10 +76,6 @@
         const cursor = cm.getCursor();
         const line = cursor.line;
         const pos = cursor.ch;
-
-        let code = cm.getValue();
-        let lang = cm.options.mode;
-
         let lspSession = getLspSession();
 
         let response = await GM.xmlHttpRequest({
@@ -58,7 +86,7 @@
                 "Content-Type": "application/json"
             },
             data: JSON.stringify({
-                lspSession,code,line,pos
+                lspSession,line,pos
             })
         });
 
@@ -100,6 +128,7 @@
         }
 
         function makeCompletions(lspCompletions) {
+
             let filtered = lspCompletions.filter(isApplicable);
             if(filtered.length)
                 lspCompletions = filtered;
@@ -126,8 +155,9 @@
         }
 
         let lspResponse = response.response;
-        return {
-            list: makeCompletions(lspResponse.completions),
+        let completions = lspResponse.completions;
+        return completions && {
+            list: makeCompletions(completions),
             from: cursor,
             to: cursor
         };
@@ -153,9 +183,6 @@
         const line = cursor.line;
         const pos = cursor.ch;
 
-        let code = cm.getValue();
-        let lang = cm.options.mode;
-
         let lspSession = getLspSession();
 
         let response = await GM.xmlHttpRequest({
@@ -166,7 +193,7 @@
                 "Content-Type": "application/json"
             },
             data: JSON.stringify({
-                lspSession,code,line,pos
+                lspSession,line,pos
             })
         });
 
@@ -193,7 +220,7 @@
         }
 
         let lspResponse = response.response;
-        return {
+        return lspResponse.callParamHints && {
             list: makeCompletions(lspResponse.callParamHints),
             from: cursor,
             to: cursor
@@ -202,7 +229,7 @@
 
     const supportedLangs = ["php", "python", "rust"];
 
-    async function initLsp(kataId, language, editorId, userId) {
+    async function initLsp(kataId, language, editorId, userId, initialCode) {
         let response = await GM.xmlHttpRequest({
             method: "POST",
             url: lspServiceUrl + "/init_lsp_session",
@@ -213,7 +240,9 @@
             data: JSON.stringify({
                 language,
                 userId,
-                editorId, kataId
+                editorId,
+                kataId,
+                initialCode
             })
         });
 
@@ -223,6 +252,55 @@
         }
 
         console.info("LSP initialized");
+    }
+
+    const diagnosticMarks = [];
+    function clearDiagnostics(cm) {
+        cm.clearGutter('diagnostics');
+        diagnosticMarks.forEach(m => m.clear());
+        diagnosticMarks.length = 0;
+    }
+
+    function showDiagnostic(diag, cm) {
+
+        function getSymbol(severity) {
+            let icons = ["?", "⛔", "⚠️", "ℹ️", "💡"];
+            return icons[severity ?? 1] ?? icons[1];
+        }
+
+        function getSquiggleClass(severity) {
+            let classes = ["hint", "error", "warning", "info", "hint"];
+            let className = classes[severity ?? 1] ?? classes[1];
+            return `cm-squiggle-${className}`;
+        }
+
+        function makeMarker(symbol, title) {
+            const el = document.createElement("div");
+            el.className = "cm-diagnostic-marker";
+            el.textContent = symbol;
+            el.title = title;
+            return el;
+        }
+        const { range, severity, message } = diag;
+        cm.setGutterMarker(range.start.line, 'diagnostics', makeMarker(getSymbol(severity), message));
+        let from = { line: range.start.line, ch: range.start.character };
+        let to = { line: range.end.line, ch: range.end.character };
+        const mark = cm.markText(
+            from,
+            to, {
+            className: getSquiggleClass(severity),
+            title: message
+        });
+
+        diagnosticMarks.push(mark);
+    }
+
+    function publishDiagnostics(lspDiagnostics, cm) {
+        clearDiagnostics(cm);
+        let { uri, version, diagnostics } = lspDiagnostics;
+        for(let diag of diagnostics) {
+            showDiagnostic(diag, cm);
+        }
     }
 
     jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, function() {
@@ -239,13 +317,60 @@
         editorElem.dataset.lspEditorId = editorId;
         let editor = editorElem.CodeMirror;
 
+        /**/
+        const gutters = editor.getOption("gutters").slice();
+        if (!gutters.includes("diagnostics")) {
+            gutters.push("diagnostics");
+            editor.setOption("gutters", gutters);
+        }
+        /**/
+
         let userId = App.instance.currentUser.id;
         let kataId = url[2];
-        let initLspResponse = initLsp(kataId, language, editorId, userId);
+        let code = editor.getValue();
+        let initLspResponse = initLsp(kataId, language, editorId, userId, code);
         let webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?userId=${userId}&editorId=${editorId}&kataId=${kataId}&language=${language}`);
         webSocket.onopen = () => {
             console.info("Web socket connection established");
         };
+        webSocket.onmessage = (event) => {
+            const { method, params } = JSON.parse(event.data);
+            console.info("method:", method);
+            switch(method) {
+                case "textDocument/publishDiagnostics":
+                    publishDiagnostics(params, editor);
+                    break;
+                default: console.log(event.data); break;
+            }
+        };
+
+        editor.on("changes", async (cm, changes) => {
+
+            let lspSession = {
+                language,
+                userId,
+                kataId,
+                editorId
+            };
+            let updatedContent = editor.getValue();
+            let response = await GM.xmlHttpRequest({
+                method: "POST",
+                url: lspServiceUrl + "/update_doc",
+                responseType: 'json',
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify({
+                    lspSession,updatedContent
+                })
+            });
+
+            if(response.status !== 200) {
+                console.log("Request failed with status ", response.status);
+                return;
+            }
+        });
+
         editor.addKeyMap({
             "Shift-Space": function (cm) {
                 cm.showHint({ hint: hintCodeCompletion, completeSingle: false });

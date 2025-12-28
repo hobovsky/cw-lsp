@@ -24,7 +24,7 @@ const phpFile = path.join(phpProjectRoot, "solution.php");
 const phpUri = pathToFileURL(phpFile).toString();
 const projectRoot = pathToFileURL(phpProjectRoot).toString();
 
-export async function initPhpLsp(): Promise<LanguageServerSession> {
+export async function initPhpLsp(code: string): Promise<LanguageServerSession> {
 
   const cp = spawn("intelephense",
   ["--stdio"],
@@ -38,16 +38,6 @@ export async function initPhpLsp(): Promise<LanguageServerSession> {
   const connection = createMessageConnection(reader, writer);
 
   cp.stderr.on("data", (d) => console.error("intelephense stderr:", d.toString()));
-  connection.onNotification((method, params) => {
-    // Helpful to see everything the server emits while debugging.
-    console.log("intelephense LSP notification:", method, JSON.stringify(params, null, 2));
-  });
-  connection.onNotification("window/logMessage", (m: unknown) =>
-    console.log("intelephense LSP log:", JSON.stringify(m, null, 2))
-  );
-  connection.onNotification("window/showMessage", (m: unknown) =>
-    console.warn("intelephense LSP msg:", JSON.stringify(m, null, 2))
-  );
 
   connection.listen();
 
@@ -71,20 +61,13 @@ export async function initPhpLsp(): Promise<LanguageServerSession> {
   )) as InitializeResult;
 
   console.log("intelephense initialized. Server capabilities received.");
-
   connection.sendNotification("initialized", {});
-  new Promise<void>((resolve) =>
-    setTimeout(() => {
-      resolve();
-    }, 5000)
-  );
-
   connection.sendNotification("textDocument/didOpen", {
     textDocument: {
       uri: phpUri,
       languageId: "php",
       version: 1,
-      text: "<?php\nfunction hello(){ }",
+      text: code,
     },
   });
 

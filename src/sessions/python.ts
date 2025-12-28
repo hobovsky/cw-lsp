@@ -24,7 +24,7 @@ const pythonFile = path.join(pythonProjectRoot, "solution.py");
 const pythonUri = pathToFileURL(pythonFile).toString();
 const projectRoot = pathToFileURL(pythonProjectRoot).toString();
 
-export async function initPythonLsp(): Promise<LanguageServerSession> {
+export async function initPythonLsp(code: string): Promise<LanguageServerSession> {
 
   const cp = spawn("pyright-langserver",
   ["--stdio"],
@@ -38,16 +38,6 @@ export async function initPythonLsp(): Promise<LanguageServerSession> {
   const connection = createMessageConnection(reader, writer);
 
   cp.stderr.on("data", (d) => console.error("pyright stderr:", d.toString()));
-  connection.onNotification((method, params) => {
-    // Helpful to see everything the server emits while debugging.
-    console.log("pyright LSP notification:", method, JSON.stringify(params, null, 2));
-  });
-  connection.onNotification("window/logMessage", (m: unknown) =>
-    console.log("pyright LSP log:", JSON.stringify(m, null, 2))
-  );
-  connection.onNotification("window/showMessage", (m: unknown) =>
-    console.warn("pyright LSP msg:", JSON.stringify(m, null, 2))
-  );
 
   connection.listen();
 
@@ -73,18 +63,12 @@ export async function initPythonLsp(): Promise<LanguageServerSession> {
   console.log("pyright initialized. Server capabilities received.");
 
   connection.sendNotification("initialized", {});
-  new Promise<void>((resolve) =>
-    setTimeout(() => {
-      resolve();
-    }, 5000)
-  );
-
   connection.sendNotification("textDocument/didOpen", {
     textDocument: {
       uri: pythonUri,
       languageId: "python",
       version: 1,
-      text: "def hello():\n  pass",
+      text: code,
     },
   });
 
