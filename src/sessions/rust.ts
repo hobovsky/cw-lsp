@@ -42,6 +42,10 @@ export async function initRustLsp(code: string): Promise<LanguageServerSession> 
     workspaceFolders: [{ uri: projectRoot, name: "rust" }],
     initializationOptions: {
       serverStatusNotification: "On",
+      cargo: {
+        autoreload: false,
+        buildScripts: { enable: false }
+      },
     },
     capabilities: {
       textDocument: {
