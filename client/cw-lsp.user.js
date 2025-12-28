@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-21-006
+// @version      2025-12-21-007
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -261,7 +261,8 @@
         diagnosticMarks.length = 0;
     }
 
-    function showDiagnostic(diag, cm) {
+
+    function publishDiagnostics(lspDiagnostics, cm) {
 
         function getSymbol(severity) {
             let icons = ["?", "⛔", "⚠️", "ℹ️", "💡"];
@@ -281,25 +282,36 @@
             el.title = title;
             return el;
         }
-        const { range, severity, message } = diag;
-        cm.setGutterMarker(range.start.line, 'diagnostics', makeMarker(getSymbol(severity), message));
-        let from = { line: range.start.line, ch: range.start.character };
-        let to = { line: range.end.line, ch: range.end.character };
-        const mark = cm.markText(
-            from,
-            to, {
-            className: getSquiggleClass(severity),
-            title: message
-        });
 
-        diagnosticMarks.push(mark);
-    }
-
-    function publishDiagnostics(lspDiagnostics, cm) {
         clearDiagnostics(cm);
         let { uri, version, diagnostics } = lspDiagnostics;
+        let linesDiags = [];
         for(let diag of diagnostics) {
-            showDiagnostic(diag, cm);
+            let line = diag.range.start.line;
+            if(linesDiags[line])
+                linesDiags[line].push(diag);
+            else
+                linesDiags[line] = [diag];
+        }
+        for (const lineDiags of linesDiags) {
+            lineDiags.sort((d1, d2) => (d2.severity ?? 1) - (d1.severity ?? 1)); // Errors last
+            for(const diag of lineDiags) {
+                const { range, severity, message } = diag;
+                let from = { line: range.start.line, ch: range.start.character };
+                let to = { line: range.end.line, ch: range.end.character };
+                const mark = cm.markText(from, to, {
+                        className: getSquiggleClass(severity),
+                        title: message
+                    });
+                diagnosticMarks.push(mark);
+            }
+            const { range, severity, message } = lineDiags.at(-1);
+            if(lineDiags.length === 1) {
+                cm.setGutterMarker(range.start.line, 'diagnostics', makeMarker(getSymbol(severity), message));
+            } else {
+                let message = `(${lineDiags.length} markers)\n\n${lineDiags.map(d => getSymbol(d.severity) + ' ' + d.message).join('\n\n')}`;
+                cm.setGutterMarker(range.start.line, 'diagnostics', makeMarker(getSymbol(severity), message));
+            }
         }
     }
 
