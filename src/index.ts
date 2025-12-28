@@ -6,6 +6,7 @@ import { getCallParamHints } from './callParamHints/index.js';
 
 import expressWs from 'express-ws';
 import { updateDoc } from './updates/index.js';
+import type { CodeMirrorChange } from './cmTypes.js';
 
 const { app } = expressWs(express());
 
@@ -53,14 +54,17 @@ app.post('/update_doc', async (req, res) => {
     console.info("update_doc request received.");
 
     try {
-      const {lspSession, updatedContent} = req.body as { 
+      const {lspSession, updatedContent, changes} = req.body as { 
         lspSession: LspSessionKey, 
-        updatedContent: string
+        updatedContent?: string,
+        changes?: CodeMirrorChange[]
       };
-      
-      console.info(`Update request for session: ${JSON.stringify(lspSession)}`)
 
-      await updateDoc(lspSession, updatedContent);
+      if(updatedContent) {
+        await updateDoc(lspSession, updatedContent);
+      } else if (changes) {
+        await updateDoc(lspSession, changes);
+      }
 
       let response = { ok: true };
       res.send(response);

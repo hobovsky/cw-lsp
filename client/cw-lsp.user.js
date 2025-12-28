@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-21-007
+// @version      2025-12-28-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -293,7 +293,7 @@
             else
                 linesDiags[line] = [diag];
         }
-        for (const lineDiags of linesDiags) {
+        for (const lineDiags of Object.values(linesDiags)) {
             lineDiags.sort((d1, d2) => (d2.severity ?? 1) - (d1.severity ?? 1)); // Errors last
             for(const diag of lineDiags) {
                 const { range, severity, message } = diag;
@@ -364,7 +364,7 @@
                 kataId,
                 editorId
             };
-            let updatedContent = editor.getValue();
+            // let updatedContent = editor.getValue();
             let response = await GM.xmlHttpRequest({
                 method: "POST",
                 url: lspServiceUrl + "/update_doc",
@@ -373,7 +373,9 @@
                     "Content-Type": "application/json"
                 },
                 data: JSON.stringify({
-                    lspSession,updatedContent
+                    lspSession,
+                    // updatedContent, // incremental update
+                    changes
                 })
             });
 
