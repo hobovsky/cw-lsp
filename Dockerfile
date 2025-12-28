@@ -39,7 +39,7 @@ RUN mkdir -p /opt/lsp-templates/php \
 ## JavaScript template
 RUN mkdir javascript \
  && printf "{}\n" > javascript/package.json \
- && printf "{\\n  \\\"compilerOptions\\\": {\\n    \\\"checkJs\\\": true\\n  }\\n}\\n" > javascript/jsconfig.json \
+ && printf "{\\n  \"compilerOptions\": {\\n    \"checkJs\": true\\n  }\\n}\\n" > javascript/jsconfig.json \
  && touch javascript/solution.js
 
 # Runtime stage
