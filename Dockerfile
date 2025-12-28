@@ -36,6 +36,12 @@ RUN mkdir -p /opt/lsp-templates/php \
  && printf '{ "name": "scratch/project", "require": {} }\n' \
     > /opt/lsp-templates/php/composer.json
 
+## JavaScript template
+RUN mkdir javascript \
+ && printf "{}\n" > javascript/package.json \
+ && printf "{\\n  \\\"compilerOptions\\\": {\\n    \\\"checkJs\\\": true\\n  }\\n}\\n" > javascript/jsconfig.json \
+ && touch javascript/solution.js
+
 # Runtime stage
 FROM node:20-bookworm-slim
 WORKDIR /app
@@ -67,6 +73,10 @@ RUN npm install -g pyright \
 ## PHP: intelephense
 
 RUN npm i intelephense -g
+
+## JavaScript/TypeScript: typescript-language-server
+RUN npm install -g typescript typescript-language-server \
+ && npm cache clean --force
 
  ## App deps
 COPY package*.json ./

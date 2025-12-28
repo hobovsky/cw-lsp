@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-28-001
+// @version      2025-12-28-002
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -227,7 +227,7 @@
         };
     }
 
-    const supportedLangs = ["php", "python", "rust"];
+    const supportedLangs = ["javascript", "php", "python", "rust"];
 
     async function initLsp(kataId, language, editorId, userId, initialCode) {
         let response = await GM.xmlHttpRequest({

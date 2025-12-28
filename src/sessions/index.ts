@@ -1,6 +1,7 @@
 import { ChildProcess } from "node:child_process"
 import { initRustLsp } from "./rust.js"
 import { initPythonLsp } from "./python.js"
+import { initJavaScriptLsp } from "./javascript.js"
 import type { MessageConnection } from "vscode-jsonrpc"
 import { initPhpLsp } from "./php.js"
 import WebSocket  from "ws"
@@ -61,6 +62,7 @@ export async function initLspSession(sessionKey: LspSessionKey, code: string): P
         case "rust":   lspProcess = await initRustLsp(code);   break;
         case "python": lspProcess = await initPythonLsp(code); break;
         case "php":    lspProcess = await initPhpLsp(code);    break;
+        case "javascript": lspProcess = await initJavaScriptLsp(code); break;
         default: throw Error(`Language ${sessionKey.language} not supported.`);
     }
     lspProcess.killTimer = setTimeout(() => { 
