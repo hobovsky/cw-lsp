@@ -69,6 +69,8 @@ export async function initLspSession(sessionKey: LspSessionKey, code: string): P
         console.info(`LSP session for ${JSON.stringify(sessionKey)}, pid=${lspProcess.process.pid ?? 'unknown' } expired.`);
         lspProcess.process.kill(); 
     }, 3 * 60 * 1000);
+    
+    // TODO: store returned server capabilities
     let session = {
         languageServer: lspProcess,
         sessionKey

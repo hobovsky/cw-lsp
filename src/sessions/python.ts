@@ -10,6 +10,8 @@ import type {
 } from "vscode-languageserver-protocol";
 import { spawn } from "child_process";
 import type { LanguageServerSession } from "./index.js";
+import { registerDefaultServerRequestHandlers, registerDefaultWorkspaceConfigurationHandler } from "./common.js";
+import { CLIENT_CAPABILITIES } from "./common.js";
 
 import { pathToFileURL } from "node:url";
 import path from "node:path";
@@ -39,28 +41,19 @@ export async function initPythonLsp(code: string): Promise<LanguageServerSession
 
   cp.stderr.on("data", (d) => console.error("pyright stderr:", d.toString()));
 
+  registerDefaultWorkspaceConfigurationHandler(connection);
+  registerDefaultServerRequestHandlers(connection);
   connection.listen();
 
   const params: InitializeParams = {
     processId: process.pid,
     rootUri: projectRoot,
     workspaceFolders: [ { uri: projectRoot, name: "python" } ],
-    initializationOptions: {
-      serverStatusNotification: "On",
-    },
-    capabilities: {
-      textDocument: {
-        completion: { completionItem: { snippetSupport: false } },
-      },
-    },
+    capabilities: CLIENT_CAPABILITIES,
   };
 
-  const result = (await connection.sendRequest(
-    "initialize",
-    params
-  )) as InitializeResult;
-
-  console.log("pyright initialized. Server capabilities received.");
+  let initialized = await connection.sendRequest("initialize", params as any) as InitializeResult;
+  console.log(`pyright initialized.`);
 
   connection.sendNotification("initialized", {});
   connection.sendNotification("textDocument/didOpen", {

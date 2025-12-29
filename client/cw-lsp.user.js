@@ -364,6 +364,8 @@
                 kataId,
                 editorId
             };
+
+            // TODO: choose between full updates and incremental updates depending on reported server capabilities.
             // let updatedContent = editor.getValue();
             let response = await GM.xmlHttpRequest({
                 method: "POST",

@@ -10,6 +10,8 @@ import type {
 } from "vscode-languageserver-protocol";
 import { spawn } from "child_process";
 import type { LanguageServerSession } from "./index.js";
+import { registerDefaultServerRequestHandlers, registerDefaultWorkspaceConfigurationHandler } from "./common.js";
+import { CLIENT_CAPABILITIES } from "./common.js";
 
 import { pathToFileURL } from "node:url";
 import path from "node:path";
@@ -39,26 +41,20 @@ export async function initJavaScriptLsp(code: string): Promise<LanguageServerSes
 
   cp.stderr.on("data", (d) => console.error("tsls stderr:", d.toString()));
 
+  registerDefaultWorkspaceConfigurationHandler(connection);
+  registerDefaultServerRequestHandlers(connection);
   connection.listen();
 
   const params: InitializeParams = {
     processId: process.pid,
     rootUri: projectRoot,
     workspaceFolders: [{ uri: projectRoot, name: "javascript" }],
-    initializationOptions: {
-      serverStatusNotification: "On",
-    },
-    capabilities: {
-      textDocument: {
-        completion: { completionItem: { snippetSupport: false } },
-        publishDiagnostics: {},
-      },
-    },
+    capabilities: CLIENT_CAPABILITIES,
+
   };
 
-  await connection.sendRequest("initialize", params as any) as InitializeResult;
-
-  console.log("typescript-language-server initialized. Server capabilities received.");
+  let initialized = await connection.sendRequest("initialize", params as any) as InitializeResult;
+  console.log(`typescript-language-server initialized.`);
 
   connection.sendNotification("initialized", {});
   connection.sendNotification("textDocument/didOpen", {

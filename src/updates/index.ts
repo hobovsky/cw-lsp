@@ -3,9 +3,12 @@ import { getLspSession, type LspSessionKey } from "../sessions/index.js";
 
 export async function updateDoc(lspSessionKey: LspSessionKey, changes: CodeMirrorChange[] | string) {
   
-  let lspSession = getLspSession(lspSessionKey);  
-  lspSession.languageServer.killTimer?.refresh();
-  let {connection, docUri } = lspSession.languageServer;
+
+    // TODO: send updates as whole or incremental depending on serverCapabilities.textDocumentSync
+    
+    let lspSession = getLspSession(lspSessionKey);  
+    lspSession.languageServer.killTimer?.refresh();
+    let {connection, docUri } = lspSession.languageServer;
 
     if(typeof changes === 'string') {
         connection.sendNotification("textDocument/didChange", {
