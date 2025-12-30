@@ -24,8 +24,5 @@ export async function getCompletions(lspSessionKey: LspSessionKey, line: number,
   let list = completion as any;
   if(!Array.isArray(list))
     list = list?.items;
-
-  console.info(`LSP reported ${list?.length} completion items.`);
-
   return list;
 }

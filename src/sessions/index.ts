@@ -18,6 +18,7 @@ export type LanguageServerSession = {
     connection: MessageConnection,
     docUri: string,
     docVersion: number,
+    serverCapabilities?: unknown,
     killTimer?: NodeJS.Timeout
 }
 

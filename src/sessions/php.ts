@@ -69,6 +69,7 @@ export async function initPhpLsp(code: string): Promise<LanguageServerSession> {
     connection: connection,
     process: cp,
     docUri: phpUri,
-    docVersion: 1
+    docVersion: 1,
+    serverCapabilities: initialized?.capabilities
   };
 }

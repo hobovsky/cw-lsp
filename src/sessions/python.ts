@@ -69,6 +69,7 @@ export async function initPythonLsp(code: string): Promise<LanguageServerSession
     connection: connection,
     process: cp,
     docUri: pythonUri,
-    docVersion: 1
+    docVersion: 1,
+    serverCapabilities: initialized?.capabilities
   };
 }

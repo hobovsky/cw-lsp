@@ -70,6 +70,7 @@ export async function initRustLsp(code: string): Promise<LanguageServerSession> 
     connection: connection,
     process: cp,
     docUri: rustUri,
-    docVersion: 1
+    docVersion: 1,
+    serverCapabilities: initialized?.capabilities
   };
 }

@@ -9,7 +9,7 @@ export async function getCallParamHints(lspSessionKey: LspSessionKey, line: numb
 
   let { connection, docUri } = lspSession.languageServer;
 
-  console.log("Requesting completion...");
+  console.log("Requesting signature help...");
   const completion = await connection.sendRequest(
     "textDocument/signatureHelp",
     {
@@ -23,8 +23,5 @@ export async function getCallParamHints(lspSessionKey: LspSessionKey, line: numb
   );
 
   let list = (completion as any)?.signatures;
-
-  console.info(`LSP reported ${list?.length} signatures.`);
-
   return list;
 }

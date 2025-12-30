@@ -34,7 +34,7 @@ app.post('/init_lsp_session', async (req, res) => {
 
       let session = await initLspSession(lspSession, initialCode);
       console.info(`LSP session initiated with process pid=${session.languageServer.process.pid ?? 'unknown' }`);
-      let response = { ok: true };
+      let response = { ok: true, serverCapabilities: session.languageServer.serverCapabilities };
       res.send(response);
 
     } catch(e: unknown) {

@@ -71,5 +71,6 @@ export async function initJavaScriptLsp(code: string): Promise<LanguageServerSes
     process: cp,
     docUri: jsUri,
     docVersion: 1,
+    serverCapabilities: initialized?.capabilities,
   };
 }
