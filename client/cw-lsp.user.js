@@ -9,6 +9,8 @@
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant GM.xmlHttpRequest
 // @grant GM_addStyle
+// @grant GM_getValue
+// @grant GM_setValue
 // @connect localhost
 // @connect self
 // @connect cw-lsp-hub.fly.dev
@@ -488,18 +490,82 @@
         if(document.getElementById('cwLspDialog'))
             return;
 
+        const DIALOG_STATE_KEY = "cwlsp.dialogState";
+
+        function loadDialogState() {
+            try {
+                const parsed = GM_getValue(DIALOG_STATE_KEY, null);
+                if(!parsed || typeof parsed !== "object") return null;
+                return parsed;
+            } catch(e) {
+                console.warn("Failed to get dialog state.", JSON.stringify(e));
+                return null;
+            }
+        }
+
+        function saveDialogOpenState(isOpen) {
+            try {
+                const state = GM_getValue(DIALOG_STATE_KEY, {});
+                state.isOpen = isOpen;
+                GM_setValue(DIALOG_STATE_KEY, state);
+            } catch(e) {
+                console.warn("Failed to save dialog open state.", JSON.stringify(e));
+            }
+        }
+
+        function saveDialogPosition(dialog) {
+            try {
+                const { my, at } = dialog.dialog("option", "position");
+                const state = GM_getValue(DIALOG_STATE_KEY, {});
+                state.width = dialog.dialog("option", "width");
+                state.height = dialog.dialog("option", "height");
+                state.position = { my, at };
+                GM_setValue(DIALOG_STATE_KEY, state);
+            } catch(e) {
+                console.warn("Failed to save dialog posiion.", JSON.stringify(e));
+            }
+        }
+
+        const state = loadDialogState();
+
         jQuery('body').append(`
     <div id='cwLspDialog' title='Codewars LSP'>
       <div id='cwlsp-docsPanel' class='markdown'>
       </div>
     </div>`);
 
-        return jQuery('#cwLspDialog').dialog({
-            autoOpen: true,
-            height: 300,
-            width: 600,
+        const dialog = jQuery('#cwLspDialog').dialog({
+            autoOpen: state?.isOpen ?? false,
+            height: state?.height ?? 300,
+            width: state?.width ?? 600,
+            position: {
+                my: state?.position?.my ?? "left top",
+                at: state?.position?.at ?? "left+20 top+20",
+                of: window },
             modal: false,
-            buttons: [ ]
+            buttons: [ ],
+            dragStop: function() { saveDialogPosition(dialog); },
+            resizeStop: function() { saveDialogPosition(dialog); },
+            close: function() { saveDialogOpenState(false); },
+            open: function() { saveDialogOpenState(true); },
+        });
+
+        return dialog;
+    }
+
+    function setUpLspButton() {
+        if(jQuery('#btnToggleLspDialog').length)
+            return;
+
+        jQuery('#language_dd').closest('ul').append('<li style="margin-left: 12px"><a class="btn is-dark" id="btnToggleLspDialog">LSP</a></li>');
+
+        jQuery('#btnToggleLspDialog').on('click', function (e) {
+            const dialog = jQuery('#cwLspDialog');
+            if(dialog.dialog('isOpen')) {
+                dialog.dialog('close');
+            } else {
+                dialog.dialog('open');
+            }
         });
     }
 
@@ -599,6 +665,7 @@
             }
         });
         initLspPanel();
+        setUpLspButton();
     }
 
     async function setUpArriveHook() {
