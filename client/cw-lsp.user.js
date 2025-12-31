@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-28-002
+// @version      2025-12-31-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -15,16 +15,31 @@
 // @require http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js
 // @require https://greasyfork.org/scripts/21927-arrive-js/code/arrivejs.js?version=198809
 // @require https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
+// @require http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js
+// @require      https://cdn.jsdelivr.net/npm/marked/marked.min.js
 // ==/UserScript==
 
 (async function() {
+
+    const TextDocumentSyncKind = {
+        None: 0,
+        Full: 1,
+        Incremental: 2
+    }
+
     'use strict';
 
-    const lspServiceUrl_ = "http://localhost:3000";
-    const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
+    const lspServiceUrl = "http://localhost:3000";
+    const lspServiceUrl_  = "https://cw-lsp-hub.fly.dev";
 
     var $ = window.jQuery;
     $.noConflict();
+    const JQUERYUI_CSS_URL = '//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/dark-hive/jquery-ui.min.css';
+    jQuery("head").append(`
+        <link href="${JQUERYUI_CSS_URL}" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/css/selectize.default.min.css" type="text/css">
+    `);
 
     GM_addStyle(`
   .diagnostics {
@@ -55,7 +70,140 @@
   text-decoration: underline wavy gray;
 }
 
+#cwlsp-docsPanel pre {
+  white-space: pre-wrap;
+  overflow-x: hidden;
+}
+
+#cwlsp-docsPanel pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+#cwlsp-docsPanel code.cwlsp-param-active {
+  background: #ffeb3b;
+}
+
 `);
+
+    function escapeHtml(s) {
+        return String(s)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function lspDocumentationToHtml(doc) {
+        if(!doc) return '';
+
+        if(typeof doc === 'string') {
+            return `<p>${escapeHtml(doc)}</p>`;
+        }
+
+        // MarkupContent: { kind: 'markdown' | 'plaintext', value: string }
+        if(doc.kind === 'markdown') {
+            return marked.parse(doc.value ?? '');
+        }
+        return `<p>${escapeHtml(doc.value ?? '')}</p>`;
+    }
+
+    function buildSignatureInfoHtml(signatureInfo) {
+        if(!signatureInfo) return '';
+
+        const signatureLabel = signatureInfo.label ?? '';
+        const signatureDocHtml = lspDocumentationToHtml(signatureInfo.documentation);
+
+        const parameters = signatureInfo.parameters ?? [];
+        const paramsHtml = parameters.length ? parameters.map((p, idx) => {
+            const labelSpec = p?.label;
+            let labelText = '';
+            if(Array.isArray(labelSpec) && labelSpec.length === 2 && typeof labelSpec[0] === 'number' && typeof labelSpec[1] === 'number') {
+                labelText = signatureLabel.slice(labelSpec[0], labelSpec[1]);
+            } else if(typeof labelSpec === 'string') {
+                labelText = labelSpec;
+            }
+
+            const paramDocHtml = lspDocumentationToHtml(p?.documentation);
+            return `
+                <div class="cwlsp-param">
+                    <div><code>${escapeHtml(labelText)}</code></div>
+                    ${paramDocHtml ? `<div class="cwlsp-param-doc">${paramDocHtml}</div>` : ''}
+                </div>
+            `;
+        }).join('') : '';
+
+        return `
+            <div class="cwlsp-signature">
+                <pre><code>${escapeHtml(signatureLabel)}</code></pre>
+                ${signatureDocHtml ? `<div class="cwlsp-signature-doc">${signatureDocHtml}</div>` : ''}
+                ${paramsHtml ? `<h4>Parameters</h4><div class="cwlsp-params">${paramsHtml}</div>` : ''}
+            </div>
+        `;
+    }
+
+    function formatUnknownValue(v) {
+        if(v === null) return "null";
+        if(v === undefined) return "undefined";
+        if(typeof v === 'string') return v;
+        if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+        try {
+            return JSON.stringify(v);
+        } catch {
+            return String(v);
+        }
+    }
+
+    function buildCompletionItemHtml(completionItem) {
+        if(!completionItem) return '';
+
+        const label = completionItem.label ?? '';
+        const detail = completionItem.detail ?? '';
+        const docHtml = lspDocumentationToHtml(completionItem.documentation);
+
+        const knownKeys = new Set([
+            "label",
+            "labelDetails",
+            "kind",
+            "detail",
+            "documentation",
+            "sortText",
+            "filterText",
+            "insertText",
+            "insertTextFormat",
+            "insertTextMode",
+            "textEdit",
+            "additionalTextEdits",
+            "commitCharacters",
+            "command",
+            "data",
+            "deprecated",
+            "preselect",
+            "tags",
+        ]);
+
+        const extras = Object.entries(completionItem)
+            .filter(([k]) => !knownKeys.has(k))
+            .map(([k, v]) => `<div><code>${escapeHtml(k)}</code>: ${escapeHtml(formatUnknownValue(v))}</div>`)
+            .join("");
+
+        const knownButRaw = [
+            completionItem.labelDetails ? `<div><code>labelDetails</code>: ${escapeHtml(formatUnknownValue(completionItem.labelDetails))}</div>` : "",
+            completionItem.kind !== undefined ? `<div><code>kind</code>: ${escapeHtml(formatUnknownValue(completionItem.kind))}</div>` : "",
+            completionItem.sortText ? `<div><code>sortText</code>: ${escapeHtml(completionItem.sortText)}</div>` : "",
+            completionItem.filterText ? `<div><code>filterText</code>: ${escapeHtml(completionItem.filterText)}</div>` : "",
+        ].filter(Boolean).join("");
+
+        return `
+            <div class="cwlsp-completion">
+                <pre><code>${escapeHtml(label)}${detail ? ` — ${escapeHtml(detail)}` : ""}</code></pre>
+                ${docHtml ? `<div class="cwlsp-completion-doc">${docHtml}</div>` : ""}
+                ${(knownButRaw || extras) ? `<h4>Details</h4><div class="cwlsp-completion-details">${knownButRaw}${extras}</div>` : ""}
+            </div>
+        `;
+    }
 
     async function hintCodeCompletion(cm) {
         if(cm.somethingSelected()) {
@@ -156,11 +304,21 @@
 
         let lspResponse = response.response;
         let completions = lspResponse.completions;
-        return completions && {
+        if(!completions) return false;
+
+        let completionData = {
             list: makeCompletions(completions),
             from: cursor,
             to: cursor
         };
+
+        cm.constructor.on(completionData, "select", function(item) {
+            let lsp = item?.lspItem;
+            if(!lsp) return;
+            jQuery('#cwlsp-docsPanel').html(buildCompletionItemHtml(lsp));
+        });
+
+        return completionData;
     }
 
     async function hintCallParams(cm) {
@@ -169,10 +327,11 @@
             return null;
         }
 
+        let url = window.location.pathname.split('/');
+        let language = url[4];
         function getLspSession() {
-            let url = window.location.pathname.split('/');
             return {
-                language: url[4],
+                language,
                 userId: App.instance.currentUser.id,
                 kataId: url[2],
                 editorId: jQuery("#code .CodeMirror")[0].dataset.lspEditorId
@@ -220,11 +379,20 @@
         }
 
         let lspResponse = response.response;
-        return lspResponse.callParamHints && {
+        if(!lspResponse.callParamHints)
+            return false;
+        let completionData = {
             list: makeCompletions(lspResponse.callParamHints),
             from: cursor,
             to: cursor
         };
+
+        cm.constructor.on(completionData, "select", function(item) {
+            let lsp = item.lspItem;
+            let html = buildSignatureInfoHtml(lsp);
+            jQuery('#cwlsp-docsPanel').html(html)
+        });
+        return completionData;
     }
 
     const supportedLangs = ["javascript", "php", "python", "rust"];
@@ -251,7 +419,8 @@
             return;
         }
 
-        console.info("LSP initialized");
+        let initData = response.response;
+        return initData;
     }
 
     const diagnosticMarks = [];
@@ -260,7 +429,6 @@
         diagnosticMarks.forEach(m => m.clear());
         diagnosticMarks.length = 0;
     }
-
 
     function publishDiagnostics(lspDiagnostics, cm) {
 
@@ -315,7 +483,28 @@
         }
     }
 
-    jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, function() {
+    function initLspPanel() {
+
+        if(document.getElementById('cwLspDialog'))
+            return;
+
+        jQuery('body').append(`
+    <div id='cwLspDialog' title='Codewars LSP'>
+      <div id='cwlsp-docsPanel' class='markdown'>
+      </div>
+    </div>`);
+
+        return jQuery('#cwLspDialog').dialog({
+            autoOpen: true,
+            height: 300,
+            width: 600,
+            modal: false,
+            buttons: [ ]
+        });
+    }
+
+    async function setUpEverything() {
+
         let url = window.location.pathname.split('/');
         if(url[3] !== "train")
             return;
@@ -340,23 +529,32 @@
         let userId = App.instance.currentUser.id;
         let kataId = url[2];
         let code = editor.getValue();
-        let initLspResponse = initLsp(kataId, language, editorId, userId, code);
+        let initLspResponse = await initLsp(kataId, language, editorId, userId, code);
         let webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?userId=${userId}&editorId=${editorId}&kataId=${kataId}&language=${language}`);
         webSocket.onopen = () => {
             console.info("Web socket connection established");
         };
         webSocket.onmessage = (event) => {
             const { method, params } = JSON.parse(event.data);
-            console.info("method:", method);
             switch(method) {
                 case "textDocument/publishDiagnostics":
                     publishDiagnostics(params, editor);
                     break;
-                default: console.log(event.data); break;
+                default:
+                    console.info("Message:", method);
+                    console.log(event.data); break;
             }
         };
 
-        editor.on("changes", async (cm, changes) => {
+        let serverCaps = initLspResponse?.serverCapabilities;
+
+        let documentSyncKind = TextDocumentSyncKind.None;
+        if(typeof serverCaps?.textDocumentSync?.change === 'number')
+            documentSyncKind = serverCaps.textDocumentSync.change;
+        else if(typeof serverCaps?.textDocumentSync === 'number')
+            documentSyncKind = serverCaps.textDocumentSync;
+
+        let onEditorChanges = async (cm, changes) => {
 
             let lspSession = {
                 language,
@@ -365,8 +563,13 @@
                 editorId
             };
 
-            // TODO: choose between full updates and incremental updates depending on reported server capabilities.
-            // let updatedContent = editor.getValue();
+            let updateData = { lspSession };
+            if (documentSyncKind === TextDocumentSyncKind.Full) {
+                updateData.updatedContent = cm.getValue();
+            } else if (documentSyncKind === TextDocumentSyncKind.Incremental) {
+                updateData.changes = changes;
+            }
+
             let response = await GM.xmlHttpRequest({
                 method: "POST",
                 url: lspServiceUrl + "/update_doc",
@@ -374,18 +577,18 @@
                 headers: {
                     "Content-Type": "application/json"
                 },
-                data: JSON.stringify({
-                    lspSession,
-                    // updatedContent, // incremental update
-                    changes
-                })
+                data: JSON.stringify(updateData)
             });
 
             if(response.status !== 200) {
                 console.log("Request failed with status ", response.status);
                 return;
             }
-        });
+        };
+
+        if(documentSyncKind !== TextDocumentSyncKind.None) {
+            editor.on("changes", onEditorChanges);
+        }
 
         editor.addKeyMap({
             "Shift-Space": function (cm) {
@@ -395,7 +598,49 @@
                 cm.showHint({ hint: hintCallParams, completeSingle: false, closeCharacters: /[)\]]/ });
             }
         });
+        initLspPanel();
+    }
+
+    async function setUpArriveHook() {
+        jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, setUpEverything);
+    }
+
+    async function setUpProxyHook() {
+        if (App.instance.controller.afterRenderHookActive) return;
+
+        App.instance.controller = new Proxy(App.instance.controller, {
+            get(obj, prop, receiver) {
+                const value = Reflect.get(obj, prop, receiver);
+
+                if (prop === "afterRender" && typeof value === "function") {
+                    return function (...args) {
+                        console.log("afterRender called");
+                        const result = value.apply(this, args);
+                        setUpEverything();
+                        return result;
+                    };
+                }
+
+                return value;
+            }
+        });
+
+        App.instance.controller.afterRenderHookActive = true;
+    }
+
+    async function setUpMonkeyPatchHook() {
+        if (App.instance.controller.afterRenderHookActive) return;
+        const original = App.instance.controller.afterRender;
+        App.instance.controller.afterRender = function () {
+            const result = original.apply(App.instance.controller);
+            setUpEverything();
+            return result;
+        };
+        App.instance.controller.afterRenderHookActive = true;
+    }
 
 
-    });
+    // setUpArriveHook();
+    // await setUpProxyHook();
+    await setUpMonkeyPatchHook();
 })();
