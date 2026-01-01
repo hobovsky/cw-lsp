@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2025-12-31-001
+// @version      2026-01-01-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -22,17 +22,39 @@
 // ==/UserScript==
 
 (async function() {
+    'use strict';
 
     const TextDocumentSyncKind = {
         None: 0,
         Full: 1,
         Incremental: 2
+    };
+
+    const CompletionItemTag = {
+        Deprecated: 1
+    };
+
+    const CompletionItemKind = {
+        Text:           1,  Method:      2,
+        Function:       3,  Constructor: 4,
+        Field:          5,  Variable:    6,
+        Class:          7,  Interface:   8,
+        Module:         9,  Property:   10,
+        Unit:          11,  Value:      12,
+        Enum:          13,  Keyword:    14,
+        Snippet:       15,  Color:      16,
+        File:          17,  Reference:  18,
+        Folder:        19,  EnumMember: 20,
+        Constant:      21,  Struct:     22,
+        Event:         23,  Operator:   24,
+        TypeParameter: 25,
     }
 
-    'use strict';
+    CompletionItemKind.allValues = [];
+    Object.entries(CompletionItemKind).forEach(([kind, val]) => CompletionItemKind.allValues[val] = kind);
 
-    const lspServiceUrl = "http://localhost:3000";
-    const lspServiceUrl_  = "https://cw-lsp-hub.fly.dev";
+    const lspServiceUrl_ = "http://localhost:3000";
+    const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
 
     var $ = window.jQuery;
     $.noConflict();
@@ -161,50 +183,34 @@
     function buildCompletionItemHtml(completionItem) {
         if(!completionItem) return '';
 
-        const label = completionItem.label ?? '';
-        const detail = completionItem.detail ?? '';
-        const docHtml = lspDocumentationToHtml(completionItem.documentation);
+        let html = '<div class="cwlsp-completion">'
+        const label = `${completionItem.label}${completionItem.labelDetails?.detail ?? ''}`;
+        html += `<pre><code>${escapeHtml(label)}</pre></code>`;
 
-        const knownKeys = new Set([
-            "label",
-            "labelDetails",
-            "kind",
-            "detail",
-            "documentation",
-            "sortText",
-            "filterText",
-            "insertText",
-            "insertTextFormat",
-            "insertTextMode",
-            "textEdit",
-            "additionalTextEdits",
-            "commitCharacters",
-            "command",
-            "data",
-            "deprecated",
-            "preselect",
-            "tags",
-        ]);
+        if(completionItem.labelDetails?.description) {
+            html += `<p>${escapeHtml(completionItem.labelDetails.description)}</p>`;
+        }
 
-        const extras = Object.entries(completionItem)
-            .filter(([k]) => !knownKeys.has(k))
-            .map(([k, v]) => `<div><code>${escapeHtml(k)}</code>: ${escapeHtml(formatUnknownValue(v))}</div>`)
-            .join("");
+        let itemKind = CompletionItemKind.allValues[completionItem.kind ?? 0];
+        let deprecated = completionItem?.tags?.includes(CompletionItemTag.Deprecated) ?? completionItem.deprecated ?? false;
+        if(itemKind && deprecated) {
+            html += `<p>${itemKind} <i>(deprecated)</i></p>`
+        } else if(itemKind) {
+            html += `<p>${itemKind}</p>`
+        } else if(deprecated) {
+            html += `<p><i>(deprecated)</i></p>`
+        }
 
-        const knownButRaw = [
-            completionItem.labelDetails ? `<div><code>labelDetails</code>: ${escapeHtml(formatUnknownValue(completionItem.labelDetails))}</div>` : "",
-            completionItem.kind !== undefined ? `<div><code>kind</code>: ${escapeHtml(formatUnknownValue(completionItem.kind))}</div>` : "",
-            completionItem.sortText ? `<div><code>sortText</code>: ${escapeHtml(completionItem.sortText)}</div>` : "",
-            completionItem.filterText ? `<div><code>filterText</code>: ${escapeHtml(completionItem.filterText)}</div>` : "",
-        ].filter(Boolean).join("");
+        if(completionItem.detail) {
+            html += `<p>${escapeHtml(completionItem.detail)}</p>`;
+        }
 
-        return `
-            <div class="cwlsp-completion">
-                <pre><code>${escapeHtml(label)}${detail ? ` — ${escapeHtml(detail)}` : ""}</code></pre>
-                ${docHtml ? `<div class="cwlsp-completion-doc">${docHtml}</div>` : ""}
-                ${(knownButRaw || extras) ? `<h4>Details</h4><div class="cwlsp-completion-details">${knownButRaw}${extras}</div>` : ""}
-            </div>
-        `;
+        if(completionItem.documentation) {
+            html += "<hr/>";
+            html += lspDocumentationToHtml(completionItem.documentation);
+        }
+        html += "</div>";
+        return html;
     }
 
     async function hintCodeCompletion(cm) {
@@ -530,7 +536,8 @@
 
         jQuery('body').append(`
     <div id='cwLspDialog' title='Codewars LSP'>
-      <div id='cwlsp-docsPanel' class='markdown'>
+      <div id='cwlsp-docsPanel'>
+<p><b>NOTE: </b>documentation panel is experimental and work in progress.</p>
       </div>
     </div>`);
 
