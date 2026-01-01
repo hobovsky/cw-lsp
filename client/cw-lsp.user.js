@@ -53,8 +53,8 @@
     CompletionItemKind.allValues = [];
     Object.entries(CompletionItemKind).forEach(([kind, val]) => CompletionItemKind.allValues[val] = kind);
 
-    const lspServiceUrl_ = "http://localhost:3000";
-    const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
+    const lspServiceUrl = "http://localhost:3000";
+    const lspServiceUrl_  = "https://cw-lsp-hub.fly.dev";
 
     var $ = window.jQuery;
     $.noConflict();
@@ -168,18 +168,6 @@
         `;
     }
 
-    function formatUnknownValue(v) {
-        if(v === null) return "null";
-        if(v === undefined) return "undefined";
-        if(typeof v === 'string') return v;
-        if(typeof v === 'number' || typeof v === 'boolean') return String(v);
-        try {
-            return JSON.stringify(v);
-        } catch {
-            return String(v);
-        }
-    }
-
     function buildCompletionItemHtml(completionItem) {
         if(!completionItem) return '';
 
@@ -213,7 +201,7 @@
         return html;
     }
 
-    async function hintCodeCompletion(cm) {
+    async function hintCodeCompletion(cm, serverCaps) {
         if(cm.somethingSelected()) {
             console.info("Selection detected, bailing out...");
             return null;
@@ -320,10 +308,36 @@
             to: cursor
         };
 
-        cm.constructor.on(completionData, "select", function(item) {
+        cm.constructor.on(completionData, "select", async function(item) {
             let lsp = item?.lspItem;
             if(!lsp) return;
             jQuery('#cwlsp-docsPanel').html(buildCompletionItemHtml(lsp));
+            
+            if(!serverCaps.completionProvider?.resolveProvider)
+                return;
+            if(item.resolved)
+                return;
+
+            let response = await GM.xmlHttpRequest({
+                method: "POST",
+                url: lspServiceUrl + "/resolve_completion",
+                responseType: 'json',
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify({
+                    lspSession, completionItem: lsp
+                })
+            });
+
+            if(response.status !== 200) {
+                console.log("Request failed with status ", response.status);
+                return;
+            }
+            let resolved = response.response.resolvedCompletion;
+            item.lspItem = resolved;
+            item.resolved = true;
+            jQuery('#cwlsp-docsPanel').html(buildCompletionItemHtml(resolved));
         });
 
         return completionData;
@@ -665,10 +679,10 @@
 
         editor.addKeyMap({
             "Shift-Space": function (cm) {
-                cm.showHint({ hint: hintCodeCompletion, completeSingle: false });
+                cm.showHint({ hint: cm => hintCodeCompletion(cm, serverCaps), completeSingle: false });
             },
             "Alt-A": function (cm) {
-                cm.showHint({ hint: hintCallParams, completeSingle: false, closeCharacters: /[)\]]/ });
+                cm.showHint({ hint: cm => hintCallParams(cm, serverCaps), completeSingle: false, closeCharacters: /[)\]]/ });
             }
         });
         initLspPanel();

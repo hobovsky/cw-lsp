@@ -1,12 +1,13 @@
 import express from 'express';
 
-import { getCompletions } from "./completions/index.js";
+import { getCompletions, resolveCompletion } from "./completions/index.js";
 import { getLspSession, initLspSession, registerWebSocket, type LspSessionKey } from './sessions/index.js';
 import { getCallParamHints } from './callParamHints/index.js';
 
 import expressWs from 'express-ws';
 import { updateDoc } from './updates/index.js';
 import type { CodeMirrorChange } from './cmTypes.js';
+import type { CompletionItem } from 'vscode-languageserver-protocol';
 
 const { app } = expressWs(express());
 
@@ -94,6 +95,21 @@ app.post('/get_completions', async (req, res) => {
     let completions = await getCompletions(lspSession, line, pos);
     let response = {
         completions
+    }
+    res.send(response);
+});
+
+app.post('/resolve_completion', async (req, res) => {
+    console.info("resolve_compleiton request received.");
+
+    const { lspSession, completionItem } = req.body as {
+      lspSession: { language: string, userId: string, kataId: string, editorId: string };
+      completionItem: CompletionItem;
+    };    
+
+    let resolvedCompletion = await resolveCompletion(lspSession, completionItem);
+    let response = {
+        resolvedCompletion
     }
     res.send(response);
 });

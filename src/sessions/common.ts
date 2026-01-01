@@ -59,7 +59,9 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
                 insertTextModeSupport: { valueSet: [ InsertTextMode.adjustIndentation, InsertTextMode.asIs ] },
                 labelDetailsSupport: true,
                 preselectSupport: false, // TODO: add support
-                // resolveSupport: undefined,
+                resolveSupport: {
+                    properties: [ "detail", "documentation" ]
+                },
                 snippetSupport: false, // TODO: add support
                 tagSupport: { valueSet: [] } // TODO: add support
             },
