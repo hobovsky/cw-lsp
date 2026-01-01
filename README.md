@@ -20,7 +20,7 @@ To use code completion when training on a Codewars kata, only the client userscr
 ### Known issues
 
 - Currently, changing trained language inside of kata trainer does not switch the language of the backing language server process, and LSP results returned by it do not match currently open language. Language server session needs to be reinitialized with `Ctrl+F5` after changing currently trained language.
-- Currently, backend LSP process shuts down after 3 minutes of inactivity. It can be restarted by hard reload of the kata trainer.
+- Currently, backend LSP process shuts down after 10 minutes of inactivity. It can be restarted by hard reload of the kata trainer.
 - **PHP:** Snippets must start with `<?php` directive. Old kata may be missing the directive in the solution setup, and it has to be added manually for LSP to work correctly.
 - **Rust:** Startup of language servers for Rust can take some time. Usually, it is ~10-20 seconds until it starts returning completion suggestions. Until the language server fully initializes, it may return no responses, or incomplete responses. It can also feel sluggish and responses can be returned with a noticeable delay.
 

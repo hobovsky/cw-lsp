@@ -1,6 +1,7 @@
 import type { CompletionItem } from "vscode-languageserver-protocol";
 import { getLspSession, type LspSessionKey } from "../sessions/index.js";
 
+// TODO: fix typing
 export async function getCompletions(lspSessionKey: LspSessionKey, line: number, charPos: number): Promise<string[]> {
 
   let lspSession = getLspSession(lspSessionKey);
