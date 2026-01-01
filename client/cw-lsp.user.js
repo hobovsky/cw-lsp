@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-001
+// @version      2026-01-01-002
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -53,8 +53,8 @@
     CompletionItemKind.allValues = [];
     Object.entries(CompletionItemKind).forEach(([kind, val]) => CompletionItemKind.allValues[val] = kind);
 
-    const lspServiceUrl = "http://localhost:3000";
-    const lspServiceUrl_  = "https://cw-lsp-hub.fly.dev";
+    const lspServiceUrl_ = "http://localhost:3000";
+    const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
 
     var $ = window.jQuery;
     $.noConflict();
@@ -129,7 +129,7 @@
 
         // MarkupContent: { kind: 'markdown' | 'plaintext', value: string }
         if(doc.kind === 'markdown') {
-            return marked.parse(doc.value ?? '');
+            return `<div class='markdown'>${marked.parse(doc.value ?? '')}</div>`;
         }
         return `<p>${escapeHtml(doc.value ?? '')}</p>`;
     }
@@ -312,7 +312,7 @@
             let lsp = item?.lspItem;
             if(!lsp) return;
             jQuery('#cwlsp-docsPanel').html(buildCompletionItemHtml(lsp));
-            
+
             if(!serverCaps.completionProvider?.resolveProvider)
                 return;
             if(item.resolved)
@@ -550,7 +550,7 @@
 
         jQuery('body').append(`
     <div id='cwLspDialog' title='Codewars LSP'>
-      <div id='cwlsp-docsPanel'>
+      <div id='cwlsp-docsPanel' class="prose">
 <p><b>NOTE: </b>documentation panel is experimental and work in progress.</p>
       </div>
     </div>`);
