@@ -1,8 +1,8 @@
-import { getLspSession, type LspSessionKey } from "../sessions/index.js";
+import { getLspSession } from "../sessions/index.js";
 
-export async function getCallParamHints(lspSessionKey: LspSessionKey, line: number, charPos: number): Promise<string[]> {
+export async function getCallParamHints(trainerSessionId: string, line: number, charPos: number): Promise<string[]> {
 
-  let lspSession = await getLspSession(lspSessionKey);
+  let lspSession = getLspSession(trainerSessionId);
   
   lspSession.languageServer.killTimer?.refresh();
   const completionPosition = { line, character: charPos };

@@ -1,12 +1,9 @@
 import type { CodeMirrorChange } from "../cmTypes.js";
-import { getLspSession, type LspSessionKey } from "../sessions/index.js";
+import { getLspSession } from "../sessions/index.js";
 
-export async function updateDoc(lspSessionKey: LspSessionKey, changes: CodeMirrorChange[] | string) {
+export async function updateDoc(trainerSessionId: string, changes: CodeMirrorChange[] | string) {
   
-
-    // TODO: send updates as whole or incremental depending on serverCapabilities.textDocumentSync
-    
-    let lspSession = getLspSession(lspSessionKey);  
+    let lspSession = getLspSession(trainerSessionId);  
     lspSession.languageServer.killTimer?.refresh();
     let {connection, docUri } = lspSession.languageServer;
 

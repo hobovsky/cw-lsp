@@ -1,13 +1,18 @@
 import express from 'express';
 
 import { getCompletions, resolveCompletion } from "./completions/index.js";
-import { getLspSession, initLspSession, registerWebSocket, type LspSessionKey } from './sessions/index.js';
+import { initLspSession, registerWebSocket, type LspSessionInfo } from './sessions/index.js';
 import { getCallParamHints } from './callParamHints/index.js';
 
 import expressWs from 'express-ws';
 import { updateDoc } from './updates/index.js';
 import type { CodeMirrorChange } from './cmTypes.js';
 import type { CompletionItem } from 'vscode-languageserver-protocol';
+
+type LspServiceResponse<T> = {
+  trainerSessionId: string,
+  data: T
+}
 
 const { app } = expressWs(express());
 
@@ -23,17 +28,18 @@ app.post('/init_lsp_session', async (req, res) => {
     console.info("init_session request received.");
 
     try {
-      const lspSession = req.body as { 
-        language: string, 
-        userId: string, 
-        kataId: string, 
-        editorId: string
-      };
-      const initialCode = req.body.initialCode;
+      const requestParams = req.body as LspServiceResponse<{
+          sessionInfo: LspSessionInfo,
+          initialCode: string
+      }>;
+      
+      console.info(`Init request for session: ${requestParams.trainerSessionId}`)
 
-      console.info(`Init request for session: ${JSON.stringify(lspSession)}`)
+      let session = await initLspSession(
+        requestParams.trainerSessionId, 
+        requestParams.data.sessionInfo, 
+        requestParams.data.initialCode);
 
-      let session = await initLspSession(lspSession, initialCode);
       console.info(`LSP session initiated with process pid=${session.languageServer.process.pid ?? 'unknown' }`);
       let response = { ok: true, serverCapabilities: session.languageServer.serverCapabilities };
       res.send(response);
@@ -55,16 +61,18 @@ app.post('/update_doc', async (req, res) => {
     console.info("update_doc request received.");
 
     try {
-      const {lspSession, updatedContent, changes} = req.body as { 
-        lspSession: LspSessionKey, 
+      const requestParams = req.body as LspServiceResponse<{ 
         updatedContent?: string,
         changes?: CodeMirrorChange[]
-      };
+      }>;
+
+      let trainerSessionId = requestParams.trainerSessionId;
+      let { updatedContent, changes } = requestParams.data;
 
       if(updatedContent) {
-        await updateDoc(lspSession, updatedContent);
+        await updateDoc(trainerSessionId, updatedContent);
       } else if (changes) {
-        await updateDoc(lspSession, changes);
+        await updateDoc(trainerSessionId, changes);
       }
 
       let response = { ok: true };
@@ -86,13 +94,13 @@ app.post('/update_doc', async (req, res) => {
 app.post('/get_completions', async (req, res) => {
     console.info("get_compleitons request received.");
 
-    const { lspSession, line, pos } = req.body as {
-      lspSession: { language: string, userId: string, kataId: string, editorId: string };
+    const requestParams = req.body as LspServiceResponse<{
       line: number;
       pos: number;
-    };    
+    }>;    
 
-    let completions = await getCompletions(lspSession, line, pos);
+    let { line, pos } = requestParams.data;
+    let completions = await getCompletions(requestParams.trainerSessionId, line, pos);
     let response = {
         completions
     }
@@ -102,12 +110,11 @@ app.post('/get_completions', async (req, res) => {
 app.post('/resolve_completion', async (req, res) => {
     console.info("resolve_compleiton request received.");
 
-    const { lspSession, completionItem } = req.body as {
-      lspSession: { language: string, userId: string, kataId: string, editorId: string };
+    const requestParams = req.body as LspServiceResponse<{
       completionItem: CompletionItem;
-    };    
+    }>;    
 
-    let resolvedCompletion = await resolveCompletion(lspSession, completionItem);
+    let resolvedCompletion = await resolveCompletion(requestParams.trainerSessionId, requestParams.data.completionItem);
     let response = {
         resolvedCompletion
     }
@@ -117,13 +124,13 @@ app.post('/resolve_completion', async (req, res) => {
 app.post('/get_call_params', async (req, res) => {
     console.info("get_call_params request received.");
 
-    const { lspSession, line, pos } = req.body as {
-      lspSession: { language: string, userId: string, kataId: string, editorId: string };
-      line: number;
-      pos: number;
-    };    
+    const requestParams = req.body as LspServiceResponse<{
+      line: number,
+      pos: number
+    }>;    
 
-    let callParamHints = await getCallParamHints(lspSession, line, pos);
+    const { line, pos } = requestParams.data;
+    let callParamHints = await getCallParamHints(requestParams.trainerSessionId, line, pos);
     let response = {
         callParamHints
     }
@@ -135,20 +142,15 @@ app.ws('/lsp-ws', async (ws, req) => {
   const url = new URL(req.url!, 'http://localhost');
   const params = url.searchParams;
 
-  let userId = params.get("userId");
-  let kataId = params.get("kataId");
-  let editorId = params.get("editorId");
-  let language = params.get("language");
-
-  if(!userId || !kataId || !editorId || !language) {
-    console.info(`Incomplete WebSocket connection request for userId=${userId} kataId=${kataId} editorId=${editorId} language=${language}`);
+  let trainerSessionId = params.get("trainerSessionId");
+  
+  if(!trainerSessionId) {
+    console.info(`Missing trainerSessionId in WebSocket connection request.`);
     return;
   }
 
-  console.info(`WebSocket connection requested for userId=${userId} kataId=${kataId} editorId=${editorId} language=${language}`);
-  await registerWebSocket({
-    userId, kataId, editorId, language
-  }, ws);
+  console.info(`WebSocket connection requested for trainerSessionId=${trainerSessionId}`);
+  await registerWebSocket(trainerSessionId, ws);
 });
 
 app.listen(port, () => {

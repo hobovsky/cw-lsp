@@ -1,10 +1,9 @@
 import type { CompletionItem } from "vscode-languageserver-protocol";
-import { getLspSession, type LspSessionKey } from "../sessions/index.js";
+import { getLspSession } from "../sessions/index.js";
 
-// TODO: fix typing
-export async function getCompletions(lspSessionKey: LspSessionKey, line: number, charPos: number): Promise<string[]> {
+export async function getCompletions(trainerSessionId: string, line: number, charPos: number): Promise<CompletionItem[]> {
 
-  let lspSession = getLspSession(lspSessionKey);
+  let lspSession = getLspSession(trainerSessionId);
   
   lspSession.languageServer.killTimer?.refresh();
   const completionPosition = { line, character: charPos };
@@ -29,9 +28,9 @@ export async function getCompletions(lspSessionKey: LspSessionKey, line: number,
   return list;
 }
 
-export async function resolveCompletion(lspSessionKey: LspSessionKey, completionItem: CompletionItem): Promise<CompletionItem> {
+export async function resolveCompletion(trainerSessionId: string, completionItem: CompletionItem): Promise<CompletionItem> {
 
-  let lspSession = getLspSession(lspSessionKey);  
+  let lspSession = getLspSession(trainerSessionId);  
   lspSession.languageServer.killTimer?.refresh();  
   console.log("Resolving completion...");
 

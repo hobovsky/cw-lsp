@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-003
+// @version      2026-01-01-004
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -111,6 +111,27 @@
 
 `);
 
+    async function callLspService(trainerSessionId, endpoint, data) {
+        let response = await GM.xmlHttpRequest({
+            method: "POST",
+            url: lspServiceUrl + endpoint,
+            responseType: 'json',
+            headers: {
+                "Content-Type": "application/json"
+            },
+            data: JSON.stringify({
+                trainerSessionId, data
+            })
+        });
+
+        if(response.status !== 200) {
+            const msg = `Request to LSP service failed with status ${response.status}`;
+            console.log(msg);
+            throw Error(msg);
+        }
+        return response.response;
+    }
+
     function escapeHtml(s) {
         return String(s)
             .replaceAll('&', '&amp;')
@@ -206,38 +227,13 @@
             console.info("Selection detected, bailing out...");
             return null;
         }
-
-        function getLspSession() {
-            let url = window.location.pathname.split('/');
-            return {
-                language: url[4],
-                userId: App.instance.currentUser.id,
-                kataId: url[2],
-                editorId: jQuery("#code .CodeMirror")[0].dataset.lspEditorId
-            };
-        }
+        let trainerSessionId = jQuery("#code .CodeMirror")[0].dataset.lspTrainerSessionId;
 
         const cursor = cm.getCursor();
         const line = cursor.line;
         const pos = cursor.ch;
-        let lspSession = getLspSession();
 
-        let response = await GM.xmlHttpRequest({
-            method: "POST",
-            url: lspServiceUrl + "/get_completions",
-            responseType: 'json',
-            headers: {
-                "Content-Type": "application/json"
-            },
-            data: JSON.stringify({
-                lspSession,line,pos
-            })
-        });
-
-        if(response.status !== 200) {
-            console.log("Request failed with status ", response.status);
-            return;
-        }
+        let completionsResponse = await callLspService(trainerSessionId, "/get_completions", { line, pos });
 
         function getDisplayText(lspCompletionItem) {
 
@@ -298,8 +294,7 @@
             }));
         }
 
-        let lspResponse = response.response;
-        let completions = lspResponse.completions;
+        let completions = completionsResponse.completions;
         if(!completions) return false;
 
         let completionData = {
@@ -318,23 +313,8 @@
             if(item.resolved)
                 return;
 
-            let response = await GM.xmlHttpRequest({
-                method: "POST",
-                url: lspServiceUrl + "/resolve_completion",
-                responseType: 'json',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                data: JSON.stringify({
-                    lspSession, completionItem: lsp
-                })
-            });
-
-            if(response.status !== 200) {
-                console.log("Request failed with status ", response.status);
-                return;
-            }
-            let resolved = response.response.resolvedCompletion;
+            let resolveCompletionResponse = await callLspService(trainerSessionId, "/resolve_completion", { completionItem: lsp });
+            let resolved = resolveCompletionResponse.resolvedCompletion;
             item.lspItem = resolved;
             item.resolved = true;
             jQuery('#cwlsp-docsPanel').html(buildCompletionItemHtml(resolved));
@@ -349,39 +329,13 @@
             return null;
         }
 
-        let url = window.location.pathname.split('/');
-        let language = url[4];
-        function getLspSession() {
-            return {
-                language,
-                userId: App.instance.currentUser.id,
-                kataId: url[2],
-                editorId: jQuery("#code .CodeMirror")[0].dataset.lspEditorId
-            };
-        }
+        let trainerSessionId = jQuery("#code .CodeMirror")[0].dataset.lspTrainerSessionId;
 
         const cursor = cm.getCursor();
         const line = cursor.line;
         const pos = cursor.ch;
 
-        let lspSession = getLspSession();
-
-        let response = await GM.xmlHttpRequest({
-            method: "POST",
-            url: lspServiceUrl + "/get_call_params",
-            responseType: 'json',
-            headers: {
-                "Content-Type": "application/json"
-            },
-            data: JSON.stringify({
-                lspSession,line,pos
-            })
-        });
-
-        if(response.status !== 200) {
-            console.log("Request failed with status ", response.status);
-            return;
-        }
+        let signatureHintReponse = await callLspService(trainerSessionId, "/get_call_params", { line, pos });
 
         function getDisplayText(lspCompletionItem) {
             return lspCompletionItem.label;
@@ -400,11 +354,10 @@
             }));
         }
 
-        let lspResponse = response.response;
-        if(!lspResponse.callParamHints)
+        if(!signatureHintReponse.callParamHints)
             return false;
         let completionData = {
-            list: makeCompletions(lspResponse.callParamHints),
+            list: makeCompletions(signatureHintReponse.callParamHints),
             from: cursor,
             to: cursor
         };
@@ -419,29 +372,16 @@
 
     const supportedLangs = ["javascript", "php", "python", "rust"];
 
-    async function initLsp(kataId, language, editorId, userId, initialCode) {
-        let response = await GM.xmlHttpRequest({
-            method: "POST",
-            url: lspServiceUrl + "/init_lsp_session",
-            responseType: 'json',
-            headers: {
-                "Content-Type": "application/json"
-            },
-            data: JSON.stringify({
-                language,
-                userId,
-                editorId,
-                kataId,
-                initialCode
-            })
-        });
+    async function initLsp(kataId, language, trainerSessionId, userId, initialCode) {
+        
+        let sessionInfo = {
+            language,
+            userId,
+            trainerSessionId,
+            kataId
+        };
 
-        if(response.status !== 200) {
-            console.log("InitLsp request failed with status ", response.status);
-            return;
-        }
-
-        let initData = response.response;
+        let initData = await callLspService(trainerSessionId, "/init_lsp_session", { sessionInfo, initialCode } );
         return initData;
     }
 
@@ -601,8 +541,8 @@
             return;
 
         let editorElem = jQuery("#code .CodeMirror")[0];
-        let editorId = crypto.randomUUID();
-        editorElem.dataset.lspEditorId = editorId;
+        let trainerSessionId = crypto.randomUUID();
+        editorElem.dataset.lspTrainerSessionId = trainerSessionId;
         let editor = editorElem.CodeMirror;
 
         /**/
@@ -616,8 +556,8 @@
         let userId = App.instance.currentUser.id;
         let kataId = url[2];
         let code = editor.getValue();
-        let initLspResponse = await initLsp(kataId, language, editorId, userId, code);
-        let webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?userId=${userId}&editorId=${editorId}&kataId=${kataId}&language=${language}`);
+        let initLspResponse = await initLsp(kataId, language, trainerSessionId, userId, code);
+        let webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?userId=${userId}&trainerSessionId=${trainerSessionId}&kataId=${kataId}&language=${language}`);
         webSocket.onopen = () => {
             console.info("Web socket connection established");
         };
@@ -643,34 +583,14 @@
 
         let onEditorChanges = async (cm, changes) => {
 
-            let lspSession = {
-                language,
-                userId,
-                kataId,
-                editorId
-            };
-
-            let updateData = { lspSession };
+            let updateData = { };
             if (documentSyncKind === TextDocumentSyncKind.Full) {
                 updateData.updatedContent = cm.getValue();
             } else if (documentSyncKind === TextDocumentSyncKind.Incremental) {
                 updateData.changes = changes;
             }
 
-            let response = await GM.xmlHttpRequest({
-                method: "POST",
-                url: lspServiceUrl + "/update_doc",
-                responseType: 'json',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                data: JSON.stringify(updateData)
-            });
-
-            if(response.status !== 200) {
-                console.log("Request failed with status ", response.status);
-                return;
-            }
+            await callLspService(trainerSessionId, "/update_doc", updateData);
         };
 
         if(documentSyncKind !== TextDocumentSyncKind.None) {
