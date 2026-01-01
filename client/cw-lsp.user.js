@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-002
+// @version      2026-01-01-003
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -189,12 +189,12 @@
             html += `<p><i>(deprecated)</i></p>`
         }
 
-        if(completionItem.detail) {
+        if(completionItem.detail && completionItem.detail != completionItem.labelDetails?.description) {
             html += `<p>${escapeHtml(completionItem.detail)}</p>`;
         }
 
         if(completionItem.documentation) {
-            html += "<hr/>";
+            html += "<div class='not-prose'><hr/></div>";
             html += lspDocumentationToHtml(completionItem.documentation);
         }
         html += "</div>";
