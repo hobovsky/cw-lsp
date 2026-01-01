@@ -188,3 +188,18 @@ export function registerDefaultServerRequestHandlers(connection: MessageConnecti
         return [];
     });
 }
+
+export async function killLspConnection(connection: MessageConnection, docUri: string) {
+    try {
+        await connection.sendNotification("textDocument/didClose", {
+            textDocument: { uri: docUri },
+        });
+        await connection.sendRequest("shutdown").catch((e) => {
+            console.warn("LSP shutdown request failed:", e);
+        });
+        await  connection.sendNotification("exit");
+    } catch (e) {
+        console.warn("Failed to send textDocument/didClose:", e);
+    }
+
+}

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-004
+// @version      2026-01-01-005
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -55,6 +55,8 @@
 
     const lspServiceUrl_ = "http://localhost:3000";
     const lspServiceUrl  = "https://cw-lsp-hub.fly.dev";
+
+    let webSocket = null;
 
     var $ = window.jQuery;
     $.noConflict();
@@ -370,8 +372,6 @@
         return completionData;
     }
 
-    const supportedLangs = ["javascript", "php", "python", "rust"];
-
     async function initLsp(kataId, language, trainerSessionId, userId, initialCode) {
         
         let sessionInfo = {
@@ -533,12 +533,7 @@
     async function setUpEverything() {
 
         let url = window.location.pathname.split('/');
-        if(url[3] !== "train")
-            return;
         let language = url[4];
-        console.info("Language: ", language);
-        if(!supportedLangs.includes(language))
-            return;
 
         let editorElem = jQuery("#code .CodeMirror")[0];
         let trainerSessionId = crypto.randomUUID();
@@ -553,11 +548,8 @@
         }
         /**/
 
-        let userId = App.instance.currentUser.id;
-        let kataId = url[2];
-        let code = editor.getValue();
-        let initLspResponse = await initLsp(kataId, language, trainerSessionId, userId, code);
-        let webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?userId=${userId}&trainerSessionId=${trainerSessionId}&kataId=${kataId}&language=${language}`);
+        webSocket?.close(3002, "Kata trainer reloaded.");
+        webSocket = new WebSocket(lspServiceUrl.replace('http', 'ws') + `/lsp-ws?trainerSessionId=${trainerSessionId}`);
         webSocket.onopen = () => {
             console.info("Web socket connection established");
         };
@@ -573,6 +565,14 @@
             }
         };
 
+        let userId = App.instance.currentUser.id;
+        let kataId = url[2];
+        let code = editor.getValue();
+        let initLspResponse = await initLsp(kataId, language, trainerSessionId, userId, code);
+        jQuery(document).leave("#code", { onceOnly: true}, function() {
+            webSocket.close(3001, "Trainer editor unloaded.");
+        })
+        
         let serverCaps = initLspResponse?.serverCapabilities;
 
         let documentSyncKind = TextDocumentSyncKind.None;
@@ -609,8 +609,30 @@
         setUpLspButton();
     }
 
+    async function setUpAfterRenderHook() {
+        if (App.instance.controller.afterRenderHookActive) return;
+        const original = App.instance.controller.afterRender;
+        App.instance.controller.afterRender = function () {
+            const result = original.apply(App.instance.controller);
+            setUpEverything();
+            return result;
+        };
+        App.instance.controller.afterRenderHookActive = true;
+    }
+
     async function setUpArriveHook() {
-        jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, setUpEverything);
+        jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, () => {
+            
+            const supportedLangs = ["javascript", "php", "python", "rust"];
+
+            let url = window.location.pathname.split('/');
+            if(url[3] !== "train")
+                return;
+            let language = url[4];
+            if(!supportedLangs.includes(language))
+                return;
+            setUpAfterRenderHook();
+        });
     }
 
     async function setUpProxyHook() {
@@ -636,19 +658,5 @@
         App.instance.controller.afterRenderHookActive = true;
     }
 
-    async function setUpMonkeyPatchHook() {
-        if (App.instance.controller.afterRenderHookActive) return;
-        const original = App.instance.controller.afterRender;
-        App.instance.controller.afterRender = function () {
-            const result = original.apply(App.instance.controller);
-            setUpEverything();
-            return result;
-        };
-        App.instance.controller.afterRenderHookActive = true;
-    }
-
-
-    // setUpArriveHook();
-    // await setUpProxyHook();
-    await setUpMonkeyPatchHook();
+    setUpArriveHook();
 })();
