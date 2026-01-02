@@ -87,6 +87,7 @@ app.post('/update_doc', async (req, res) => {
         message = e.message;
       }
 
+      console.error("Error in update_doc: " + message);
       res.status(500).send({ ok: false, message  })
     }
 });

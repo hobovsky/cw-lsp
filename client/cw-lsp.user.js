@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-005
+// @version      2026-01-01-006
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -530,6 +530,23 @@
         });
     }
 
+    async function cleanUpOldState() {
+
+        let editorElem = jQuery("#code .CodeMirror")[0];
+        delete editorElem.dataset.lspTrainerSessionId;
+        let editor = editorElem.CodeMirror;
+
+        if (editor._cwlspOnChanges) {
+            editor.off("changes", editor._cwlspOnChanges);
+            delete editor._cwlspOnChanges;
+        }
+
+        if(editor._cwlspKeyMap) {
+            editor.removeKeyMap(editor._cwlspKeyMap);
+            delete editor._cwlspKeyMap;
+        }
+    }
+
     async function setUpEverything() {
 
         let url = window.location.pathname.split('/');
@@ -581,7 +598,8 @@
         else if(typeof serverCaps?.textDocumentSync === 'number')
             documentSyncKind = serverCaps.textDocumentSync;
 
-        let onEditorChanges = async (cm, changes) => {
+        editor._cwlspTrainerSessionId = trainerSessionId;
+        editor._cwlspOnChanges = async (cm, changes) => {
 
             let updateData = { };
             if (documentSyncKind === TextDocumentSyncKind.Full) {
@@ -590,21 +608,22 @@
                 updateData.changes = changes;
             }
 
-            await callLspService(trainerSessionId, "/update_doc", updateData);
+            await callLspService(cm._cwlspTrainerSessionId, "/update_doc", updateData);
         };
 
         if(documentSyncKind !== TextDocumentSyncKind.None) {
-            editor.on("changes", onEditorChanges);
+            editor.on("changes", editor._cwlspOnChanges);
         }
 
-        editor.addKeyMap({
+        editor._cwlspKeyMap = {
             "Shift-Space": function (cm) {
                 cm.showHint({ hint: cm => hintCodeCompletion(cm, serverCaps), completeSingle: false });
             },
             "Alt-A": function (cm) {
                 cm.showHint({ hint: cm => hintCallParams(cm, serverCaps), completeSingle: false, closeCharacters: /[)\]]/ });
             }
-        });
+        }
+        editor.addKeyMap(editor._cwlspKeyMap);
         initLspPanel();
         setUpLspButton();
     }
@@ -613,6 +632,7 @@
         if (App.instance.controller.afterRenderHookActive) return;
         const original = App.instance.controller.afterRender;
         App.instance.controller.afterRender = function () {
+            cleanUpOldState();
             const result = original.apply(App.instance.controller);
             setUpEverything();
             return result;
