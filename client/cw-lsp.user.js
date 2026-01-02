@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-01-006
+// @version      2026-01-03-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -111,6 +111,40 @@
   background: #ffeb3b;
 }
 
+#cwlsp-header {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 6px;
+}
+
+#cwlsp-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#cwlsp-toolbar {
+  display: flex;
+}
+
+#cwlsp-logPanel ul {
+  list-style: none;
+  padding-left: 1.4em;
+}
+
+#cwlsp-logPanel li::marker {
+  content: attr(data-icon) " ";
+}
+
+#cwlsp-logPanel li {
+  line-height: 1.1;
+  margin-bottom: 3px;
+}
 `);
 
     async function callLspService(trainerSessionId, endpoint, data) {
@@ -373,7 +407,7 @@
     }
 
     async function initLsp(kataId, language, trainerSessionId, userId, initialCode) {
-        
+
         let sessionInfo = {
             language,
             userId,
@@ -395,7 +429,7 @@
     function publishDiagnostics(lspDiagnostics, cm) {
 
         function getSymbol(severity) {
-            let icons = ["?", "⛔", "⚠️", "ℹ️", "💡"];
+            let icons = ["❔", "⛔", "⚠️", "ℹ️", "💡"];
             return icons[severity ?? 1] ?? icons[1];
         }
 
@@ -445,6 +479,13 @@
         }
     }
 
+    function publishLogMessage(message, type) {
+        let icons = ["❔", "⛔", "⚠️", "ℹ️", "💡"];
+        let icon = icons[type] ?? icons[0];
+        // jQuery("#cwlsp-logPanel ul").append(`<li>${icon} ${message}</li>`)
+        jQuery("#cwlsp-logPanel ul").append(jQuery("<li>").attr("data-icon", icon).text(message));
+    }
+
     function initLspPanel() {
 
         if(document.getElementById('cwLspDialog'))
@@ -490,10 +531,38 @@
 
         jQuery('body').append(`
     <div id='cwLspDialog' title='Codewars LSP'>
-      <div id='cwlsp-docsPanel' class="prose">
-<p><b>NOTE: </b>documentation panel is experimental and work in progress.</p>
+<div id="cwlsp-header">
+  <span id="cwlsp-title">Documentation</span>
+
+  <div id="cwlsp-toolbar">
+    <input type="radio" name="cwlsp" id="cwlsp-docs" checked>
+    <label for="cwlsp-docs" title="Documentation">📙</label>
+
+    <input type="radio" name="cwlsp" id="cwlsp-log">
+    <label for="cwlsp-log" title="Messages & Logs">📜</label>
+
+    <input type="radio" name="cwlsp" id="cwlsp-settings">
+    <label for="cwlsp-settings" title="Settings">⚙️</label>
+  </div>
+</div>
+      <div id="lspDialogTabs">
+        <div id='cwlsp-docsPanel' class="prose"></div>
+        <div id='cwlsp-logPanel'>
+            <ul style="font-family: monospace; list-style: none; margin: 0; line-height: 1em;"/>
+        </div>
+        <div id='cwlsp-settingsPanel' class="prose"></div>
       </div>
     </div>`);
+        jQuery( "#cwlsp-toolbar" ).buttonset();
+        jQuery("#lspDialogTabs > div").hide();
+        jQuery("#cwlsp-docsPanel").show();
+        jQuery("#cwlsp-toolbar input").on("change", function () {
+            const label = $("label[for='" + this.id + "']").attr("title");
+            $("#cwlsp-title").text(label);
+
+            $("#lspDialogTabs > div").hide();
+            $("#" + this.id + "Panel").show();
+        });
 
         const dialog = jQuery('#cwLspDialog').dialog({
             autoOpen: state?.isOpen ?? false,
@@ -576,9 +645,14 @@
                 case "textDocument/publishDiagnostics":
                     publishDiagnostics(params, editor);
                     break;
+                case "window/logMessage":
+                case "window/showMessage":
+                    const { type, message } = params;
+                    publishLogMessage(message, type);
+                    break;
                 default:
-                    console.info("Message:", method);
-                    console.log(event.data); break;
+                    console.log(event.data);
+                    break;
             }
         };
 
@@ -589,7 +663,7 @@
         jQuery(document).leave("#code", { onceOnly: true}, function() {
             webSocket.close(3001, "Trainer editor unloaded.");
         })
-        
+
         let serverCaps = initLspResponse?.serverCapabilities;
 
         let documentSyncKind = TextDocumentSyncKind.None;
@@ -642,7 +716,7 @@
 
     async function setUpArriveHook() {
         jQuery(document).arrive("#code div.CodeMirror", { existing: true, onceOnly: false }, () => {
-            
+
             const supportedLangs = ["javascript", "php", "python", "rust"];
 
             let url = window.location.pathname.split('/');
