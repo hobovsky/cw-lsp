@@ -668,6 +668,7 @@
                 case "$/progress":
                     const { token, value } = params;
                     publishProgressMessage(token, value);
+                    break;
                 default:
                     console.log(event.data);
                     break;
