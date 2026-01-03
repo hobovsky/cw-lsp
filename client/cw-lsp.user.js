@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-03-003
+// @version      2026-01-04-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -686,7 +686,14 @@
         let kataId = url[2];
         let code = editor.getValue();
         let initLspResponse = await initLsp(kataId, language, trainerSessionId, userId, code);
-        jQuery(document).leave("#code", { onceOnly: true}, function() {
+        jQuery(document).leave("#code", { onceOnly: true}, function(codeElem) {
+
+            // Switching editor to fullscreen and back manipulates DOM
+            // in a way which triggers arrive.js's `leave` even though
+            // the editor is still kept in the document.
+            if(document.contains(codeElem))
+               return;
+
             webSocket.close(3001, "Trainer editor unloaded.");
         })
 
