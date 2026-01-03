@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-03-002
+// @version      2026-01-03-003
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -18,7 +18,8 @@
 // @require https://greasyfork.org/scripts/21927-arrive-js/code/arrivejs.js?version=198809
 // @require https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
 // @require http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js
-// @require      https://cdn.jsdelivr.net/npm/marked/marked.min.js
+// @require https://cdn.jsdelivr.net/npm/marked/marked.min.js
+// @require https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js
 // ==/UserScript==
 
 (async function() {
@@ -63,8 +64,7 @@
     const JQUERYUI_CSS_URL = '//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/dark-hive/jquery-ui.min.css';
     jQuery("head").append(`
         <link href="${JQUERYUI_CSS_URL}" rel="stylesheet" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css" type="text/css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/css/selectize.default.min.css" type="text/css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css" type="text/css">
     `);
 
     GM_addStyle(`
@@ -147,6 +147,13 @@
 }
 `);
 
+    marked.use({ renderer: {
+        code: function(code) {
+            let { lang, text } = code;
+            return '<pre><code>' + hljs.highlight(text, { language: lang || 'plaintext' }).value + '</code></pre>';
+        }
+    }});
+
     async function callLspService(trainerSessionId, endpoint, data) {
         let response = await GM.xmlHttpRequest({
             method: "POST",
@@ -186,7 +193,7 @@
 
         // MarkupContent: { kind: 'markdown' | 'plaintext', value: string }
         if(doc.kind === 'markdown') {
-            return `<div class='markdown'>${marked.parse(doc.value ?? '')}</div>`;
+            return `<div>${marked.parse(doc.value ?? '')}</div>`;
         }
         return `<p>${escapeHtml(doc.value ?? '')}</p>`;
     }
