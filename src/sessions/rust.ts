@@ -26,7 +26,7 @@ const rustFile = path.join(rustProjectRoot, "src", "lib.rs");
 const rustUri = pathToFileURL(rustFile).toString();
 const projectRoot = pathToFileURL(rustProjectRoot).toString();
 
-export async function initRustLsp(code: string): Promise<LanguageServerSession> {
+export async function initRustLsp(trainerSessionId: string, code: string): Promise<LanguageServerSession> {
 
   const cp = spawn("rust-analyzer");
   const reader = new StreamMessageReader(cp.stdout);
@@ -36,8 +36,8 @@ export async function initRustLsp(code: string): Promise<LanguageServerSession> 
 
   cp.stderr.on("data", (d) => console.error("RA stderr:", d.toString()));
   
-  registerDefaultWorkspaceConfigurationHandler(connection);
-  registerDefaultServerRequestHandlers(connection);
+  registerDefaultWorkspaceConfigurationHandler(trainerSessionId, connection);
+  registerDefaultServerRequestHandlers(trainerSessionId, connection);
   connection.listen();
 
   const params: InitializeParams = {

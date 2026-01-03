@@ -2,10 +2,11 @@ import { ChildProcess } from "node:child_process"
 import { initRustLsp } from "./rust.js"
 import { initPythonLsp } from "./python.js"
 import { initJavaScriptLsp } from "./javascript.js"
-import type { MessageConnection } from "vscode-jsonrpc"
+import type { MessageConnection, ProgressType } from "vscode-jsonrpc"
 import { initPhpLsp } from "./php.js"
 import WebSocket  from "ws"
 import { killLspConnection } from "./common.js"
+import { WorkDoneProgressCreateRequest, type WorkDoneProgressCreateParams, type WorkDoneProgressParams } from "vscode-languageserver-protocol"
 
 // TODO: rename to LspSessionInfo
 export type LspSessionInfo = {
@@ -45,6 +46,15 @@ async function registerLspCallbacks(trainerSessionId: string) {
     connection.onNotification((method, params) => {
         ws.send(JSON.stringify({method, params}));
     });
+    connection.onRequest(WorkDoneProgressCreateRequest.method, (params: WorkDoneProgressCreateParams) => {
+        ws.send(JSON.stringify({method: WorkDoneProgressCreateRequest.method, params}));
+    })
+    connection.onUnhandledProgress((params) => {
+        let progressKind = params.value?.kind;
+        if(!progressKind || progressKind === "report")
+            return;
+        ws.send(JSON.stringify({method: "$/progress", params}));
+    });
     console.info(`Registered LSP callbacks for ${trainerSessionId}.`);
 }
 
@@ -57,10 +67,10 @@ export async function initLspSession(trainerSessionId: string, sessionInfo: LspS
 
     let lspProcess: LanguageServerSession;
     switch(sessionInfo.language) {
-        case "rust":   lspProcess = await initRustLsp(code);   break;
-        case "python": lspProcess = await initPythonLsp(code); break;
-        case "php":    lspProcess = await initPhpLsp(code);    break;
-        case "javascript": lspProcess = await initJavaScriptLsp(code); break;
+        case "rust":       lspProcess = await initRustLsp      (trainerSessionId, code); break;
+        case "python":     lspProcess = await initPythonLsp    (trainerSessionId, code); break;
+        case "php":        lspProcess = await initPhpLsp       (trainerSessionId, code); break;
+        case "javascript": lspProcess = await initJavaScriptLsp(trainerSessionId, code); break;
         default: throw Error(`Language ${sessionInfo.language} not supported.`);
     }
     lspProcess.killTimer = setTimeout(() => { 

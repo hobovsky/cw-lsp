@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-03-001
+// @version      2026-01-03-002
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
-// @match        https://www.codewars.com/kata/*
+// @match        https://www.codewars.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant GM.xmlHttpRequest
 // @grant GM_addStyle
@@ -482,8 +482,20 @@
     function publishLogMessage(message, type) {
         let icons = ["❔", "⛔", "⚠️", "ℹ️", "💡"];
         let icon = icons[type] ?? icons[0];
-        // jQuery("#cwlsp-logPanel ul").append(`<li>${icon} ${message}</li>`)
         jQuery("#cwlsp-logPanel ul").append(jQuery("<li>").attr("data-icon", icon).text(message));
+    }
+
+    function publishProgressMessage(token, progressValue) {
+        if(!token || !progressValue)
+            return;
+        let { kind, title } = progressValue;
+        if(kind === "begin" && title) {
+            jQuery("#cwlsp-logPanel ul").append(jQuery("<li>").attr("data-icon", "⏳").attr("data-cwlspProgressToken", token).text(title));
+        } else if(kind === "end") {
+            jQuery(`#cwlsp-logPanel ul li[data-cwlspProgressToken="${token}"]`)
+                .attr("data-icon", "✅")
+                .removeAttr("data-cwlspProgressToken");
+        }
     }
 
     function initLspPanel() {
@@ -650,6 +662,12 @@
                     const { type, message } = params;
                     publishLogMessage(message, type);
                     break;
+                case "window/workDoneProgress/create":
+                    // ignore (for now)
+                    break;
+                case "$/progress":
+                    const { token, value } = params;
+                    publishProgressMessage(token, value);
                 default:
                     console.log(event.data);
                     break;

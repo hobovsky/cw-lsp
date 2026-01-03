@@ -26,7 +26,7 @@ const phpFile = path.join(phpProjectRoot, "solution.php");
 const phpUri = pathToFileURL(phpFile).toString();
 const projectRoot = pathToFileURL(phpProjectRoot).toString();
 
-export async function initPhpLsp(code: string): Promise<LanguageServerSession> {
+export async function initPhpLsp(trainerSessionId: string, code: string): Promise<LanguageServerSession> {
 
   const cp = spawn("intelephense",
   ["--stdio"],
@@ -41,8 +41,8 @@ export async function initPhpLsp(code: string): Promise<LanguageServerSession> {
 
   cp.stderr.on("data", (d) => console.error("intelephense stderr:", d.toString()));
 
-  registerDefaultWorkspaceConfigurationHandler(connection);
-  registerDefaultServerRequestHandlers(connection);
+  registerDefaultWorkspaceConfigurationHandler(trainerSessionId, connection);
+  registerDefaultServerRequestHandlers(trainerSessionId, connection);
   connection.listen();
 
   const params: InitializeParams = {

@@ -26,7 +26,7 @@ const pythonFile = path.join(pythonProjectRoot, "solution.py");
 const pythonUri = pathToFileURL(pythonFile).toString();
 const projectRoot = pathToFileURL(pythonProjectRoot).toString();
 
-export async function initPythonLsp(code: string): Promise<LanguageServerSession> {
+export async function initPythonLsp(trainerSessionId: string, code: string): Promise<LanguageServerSession> {
 
   const cp = spawn("pyright-langserver",
   ["--stdio"],
@@ -41,8 +41,8 @@ export async function initPythonLsp(code: string): Promise<LanguageServerSession
 
   cp.stderr.on("data", (d) => console.error("pyright stderr:", d.toString()));
 
-  registerDefaultWorkspaceConfigurationHandler(connection);
-  registerDefaultServerRequestHandlers(connection);
+  registerDefaultWorkspaceConfigurationHandler(trainerSessionId, connection);
+  registerDefaultServerRequestHandlers(trainerSessionId, connection);
   connection.listen();
 
   const params: InitializeParams = {

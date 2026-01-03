@@ -21,7 +21,7 @@ To use code completion when training on a Codewars kata, only the client userscr
 
 - Currently, backend LSP process shuts down after 30 minutes of inactivity. It can be restarted by hard reload of the kata trainer.
 - **PHP:** Snippets must start with `<?php` directive. Old kata may be missing the directive in the solution setup, and it has to be added manually for LSP to work correctly.
-- **Rust:** Startup of language servers for Rust can take some time. Usually, it is ~10-20 seconds until it starts returning completion suggestions. Until the language server fully initializes, it may return no responses, or incomplete responses. It can also feel sluggish and responses can be returned with a noticeable delay.
+- **Rust:** Startup of language servers for Rust can take some time. Usually, it is ~10-20 seconds until it starts returning completion suggestions. Until the language server fully initializes, it may return no responses, or incomplete responses. It can also feel sluggish and responses can be returned with a noticeable delay. Readiness of Rust Analyzer can be roughly estimated by tracking the _"Initializing"_ progress message in the log panel, and waiting until it gets marked with a green check mark.
 
 
 ## Server

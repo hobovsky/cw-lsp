@@ -1,5 +1,6 @@
-import { CompletionItemKind, DiagnosticTag, InsertTextMode, MarkupKind, PositionEncodingKind, SymbolKind, type ClientCapabilities } from "vscode-languageserver-protocol";
+import { CompletionItemKind, DiagnosticTag, InsertTextMode, MarkupKind, PositionEncodingKind, SymbolKind, WorkDoneProgressCreateRequest, type ClientCapabilities, type ShowMessageRequestParams, type WorkDoneProgressCreateParams } from "vscode-languageserver-protocol";
 import type { MessageConnection } from "vscode-jsonrpc";
+import { getLspSession } from "./index.js";
 
 // We are going to be very explicit about capabilities,
 // so it will be hopefully easier for future maintainers
@@ -138,26 +139,29 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
         // workspaceEdit: undefined
     },
     
+    window: {
+        workDoneProgress: true,
     // These are not supported now, but might be in the future
-    // window: {
-    //     workDoneProgress: false,
-    //     showMessage: { messageActionItem: { additionalPropertiesSupport: false } },
+        showMessage: { 
+            // messageActionItem: { additionalPropertiesSupport: false } 
+        },
     //     showDocument: { support: false}
-    // },
+    },
 
     // Support for capabilities below is not planned
     // experimental: undefined,
     // notebookDocument: undefined,
 }
 
-export function registerDefaultWorkspaceConfigurationHandler(connection: MessageConnection) {
+export function registerDefaultWorkspaceConfigurationHandler(trainerSessionId: string, connection: MessageConnection) {
     connection.onRequest("workspace/configuration", (params: any) => {
+        console.info("Dummy handler invoked: workspace/configuration", params);
         const items = (params?.items ?? []) as unknown[];
         return items.map(() => null);
     });
 }
 
-export function registerDefaultServerRequestHandlers(connection: MessageConnection) {
+export function registerDefaultServerRequestHandlers(trainerSessionId: string, connection: MessageConnection) {
 
     // Some servers send these requests even if we advertise `dynamicRegistration: false`.
     // Provide dummy handlers to avoid hangs; fill in proper behavior later as needed.
@@ -173,12 +177,7 @@ export function registerDefaultServerRequestHandlers(connection: MessageConnecti
         return null;
     });
 
-    connection.onRequest("window/workDoneProgress/create", (params: any) => {
-        console.info("Dummy handler invoked: window/workDoneProgress/create", params);
-        return null;
-    });
-
-    connection.onRequest("window/showMessageRequest", (params: any) => {
+    connection.onRequest("window/showMessageRequest", (params: ShowMessageRequestParams) => {
         console.info("Dummy handler invoked: window/showMessageRequest", params);
         return null;
     });

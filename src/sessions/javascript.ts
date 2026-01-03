@@ -25,7 +25,7 @@ const jsFile = path.join(jsProjectRoot, "solution.js");
 const jsUri = pathToFileURL(jsFile).toString();
 const projectRoot = pathToFileURL(jsProjectRoot).toString();
 
-export async function initJavaScriptLsp(code: string): Promise<LanguageServerSession> {
+export async function initJavaScriptLsp(trainerSessionId: string, code: string): Promise<LanguageServerSession> {
   const cp = spawn(
     "typescript-language-server",
     ["--stdio"],
@@ -41,8 +41,8 @@ export async function initJavaScriptLsp(code: string): Promise<LanguageServerSes
 
   cp.stderr.on("data", (d) => console.error("tsls stderr:", d.toString()));
 
-  registerDefaultWorkspaceConfigurationHandler(connection);
-  registerDefaultServerRequestHandlers(connection);
+  registerDefaultWorkspaceConfigurationHandler(trainerSessionId, connection);
+  registerDefaultServerRequestHandlers(trainerSessionId, connection);
   connection.listen();
 
   const params: InitializeParams = {
