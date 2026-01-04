@@ -145,6 +145,12 @@
   line-height: 1.1;
   margin-bottom: 3px;
 }
+
+.lsp-plaintext {
+    white-space: pre-wrap;
+    font-family: inherit;
+}
+
 `);
 
     marked.use({ renderer: {
@@ -185,10 +191,13 @@
     }
 
     function lspDocumentationToHtml(doc) {
+        
+        // TODO: handle MarkedText | MarkedText[]
+        
         if(!doc) return '';
 
         if(typeof doc === 'string') {
-            return `<p>${escapeHtml(doc)}</p>`;
+            return `<pre>${escapeHtml(doc)}</pre>`;
         }
 
         // MarkupContent: { kind: 'markdown' | 'plaintext', value: string }
@@ -196,6 +205,7 @@
             return `<div>${marked.parse(doc.value ?? '')}</div>`;
         }
         return `<pre>${escapeHtml(doc.value ?? '')}</pre>`;
+        // return `<div class="lsp-plaintext">${escapeHtml(doc.value ?? '')}</div>`;
     }
 
     function buildSignatureInfoHtml(signatureInfo) {
