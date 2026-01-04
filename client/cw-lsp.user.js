@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-04-001
+// @version      2026-01-04-002
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -195,7 +195,7 @@
         if(doc.kind === 'markdown') {
             return `<div>${marked.parse(doc.value ?? '')}</div>`;
         }
-        return `<p>${escapeHtml(doc.value ?? '')}</p>`;
+        return `<pre>${escapeHtml(doc.value ?? '')}</pre>`;
     }
 
     function buildSignatureInfoHtml(signatureInfo) {
@@ -411,6 +411,34 @@
             jQuery('#cwlsp-docsPanel').html(html)
         });
         return completionData;
+    }
+
+    function buildHoverHintHtml(hoverHint) {
+        let { contents } = hoverHint;
+        if(contents.kind) {
+            return lspDocumentationToHtml(contents);
+        } else {
+            console.info('MarkedString is currently not supported');
+        }
+    }
+
+    async function showHoverHint(cm) {
+        if(cm.somethingSelected()) {
+            console.info("Selection detected, bailing out...");
+            return null;
+        }
+        let trainerSessionId = jQuery("#code .CodeMirror")[0].dataset.lspTrainerSessionId;
+
+        const cursor = cm.getCursor();
+        const line = cursor.line;
+        const pos = cursor.ch;
+
+        let hoverHintResponse = await callLspService(trainerSessionId, "/get_hover", { line, pos });
+        if(!hoverHintResponse?.hover) {
+            return;
+        }
+        jQuery('#cwlsp-docsPanel').html(buildHoverHintHtml(hoverHintResponse.hover));
+
     }
 
     async function initLsp(kataId, language, trainerSessionId, userId, initialCode) {
@@ -728,6 +756,9 @@
             },
             "Alt-A": function (cm) {
                 cm.showHint({ hint: cm => hintCallParams(cm, serverCaps), completeSingle: false, closeCharacters: /[)\]]/ });
+            },
+            "Alt-H": function (cm) {
+                showHoverHint(cm);
             }
         }
         editor.addKeyMap(editor._cwlspKeyMap);

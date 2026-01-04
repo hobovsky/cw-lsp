@@ -91,6 +91,10 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
                 }
             }
         },
+        hover: {
+            dynamicRegistration: false,
+            contentFormat: [ MarkupKind.Markdown, MarkupKind.PlainText ]
+        },
 
         // callHierarchy: undefined,
         // codeAction: undefined,
@@ -103,7 +107,6 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
         // documentSymbol: undefined,
         // foldingRange: undefined,
         // formatting: undefined,
-        // hover: undefined, // TODO: add support
         // implementation: undefined,
         // inlayHint: undefined,
         // inlineCompletion: undefined,

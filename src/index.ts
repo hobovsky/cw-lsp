@@ -8,6 +8,7 @@ import expressWs from 'express-ws';
 import { updateDoc } from './updates/index.js';
 import type { CodeMirrorChange } from './cmTypes.js';
 import type { CompletionItem } from 'vscode-languageserver-protocol';
+import { getHoverHint } from './hover/index.js';
 
 type LspServiceResponse<T> = {
   trainerSessionId: string,
@@ -134,6 +135,22 @@ app.post('/get_call_params', async (req, res) => {
     let callParamHints = await getCallParamHints(requestParams.trainerSessionId, line, pos);
     let response = {
         callParamHints
+    }
+    res.send(response);
+});
+
+app.post('/get_hover', async (req, res) => {
+    console.info("get_hover request received.");
+
+    const requestParams = req.body as LspServiceResponse<{
+      line: number;
+      pos: number;
+    }>;    
+
+    let { line, pos } = requestParams.data;
+    let hover = await getHoverHint(requestParams.trainerSessionId, line, pos);
+    let response = {
+        hover
     }
     res.send(response);
 });

@@ -112,7 +112,8 @@ export async function registerWebSocket(trainerSessionId: string, ws: WebSocket)
         let session = getLspSession(trainerSessionId);
         delete sessions[trainerSessionId];
         delete webSockets[trainerSessionId];
-        session.languageServer.killTimer?.close();
+        clearTimeout(session.languageServer.killTimer);
+        delete session.languageServer.killTimer;
         
         try {
             await Promise.race([
