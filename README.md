@@ -16,6 +16,7 @@ To use code completion when training on a Codewars kata, only the client userscr
 - Start typing code in the `Solution` editor. Use one of following key combinations:
   - `Shift-Space` to trigger completion suggestions.
   - `Alt-A` to trigger signature hints.
+  - `Alt-H` to present documentation help.
 - Click the blue `LSP` button to show or hide the floating LSP panel. The panel can be moved around and resized, and it will remember its position.
 
 ### Known issues
