@@ -2,7 +2,7 @@
 
 `cw-lsp` is a Tampermonkey user script which turns Codewars code editors into Language Server Protocol clients and enriches them with some basic IDE-like functionality. It currently supports:
 
-- Language Server Protocol features: code completions, callable signatures, code diagnostics;
+- Language Server Protocol features: code completions, callable signatures, code diagnostics, documentation;
 - Languages: JavaScript, Python, PHP, Rust;
 - Codewars editors: currently, the only supported editor is the Solution editor in kata trainer.
 
@@ -16,9 +16,11 @@ To use code completion when training on a Codewars kata, only the client userscr
 - Start typing code in the `Solution` editor. Use one of following key combinations:
   - `Shift-Space` to trigger completion suggestions.
   - `Alt-A` to trigger signature hints.
+- Click the blue `LSP` button to show or hide the floating LSP panel. The panel can be moved around and resized, and it will remember its position.
 
 ### Known issues
 
+- `cw-lsp` can see only code from the user solution editor in the kata trainer. It does not work in other code editors (sample tests, translations, kata editor), and it does not see code from preloaded snippet. If user solution references symbols from preloaded, `cw-lsp` will not see them, and can report errors related to them. 
 - Currently, backend LSP process shuts down after 30 minutes of inactivity. It can be restarted by hard reload of the kata trainer.
 - **PHP:** Snippets must start with `<?php` directive. Old kata may be missing the directive in the solution setup, and it has to be added manually for LSP to work correctly.
 - **Rust:** Startup of language servers for Rust can take some time. Usually, it is ~10-20 seconds until it starts returning completion suggestions. Until the language server fully initializes, it may return no responses, or incomplete responses. It can also feel sluggish and responses can be returned with a noticeable delay. Readiness of Rust Analyzer can be roughly estimated by tracking the _"Initializing"_ progress message in the log panel, and waiting until it gets marked with a green check mark.
@@ -26,7 +28,7 @@ To use code completion when training on a Codewars kata, only the client userscr
 
 ## Server
 
-Server does not have to be run locally to use `cw-lsp`. Client script is configured to use a publicly available service. However, anyone who wants to tinker with backend or run it for development purposes, can follow instructions below.
+Server does not have to be run locally to use `cw-lsp`. Client script is configured to use a publicly available service. However, anyone who wants to run it locally to get more resources for their language server, tinker with backend, or run it for development purposes, can follow instructions below.
 
 ### Build
 
