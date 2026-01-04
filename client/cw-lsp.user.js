@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LSP Integration for Codewars
 // @namespace    lsp.cw.hobovsky
-// @version      2026-01-04-002
+// @version      2026-01-05-001
 // @author       hobovsky
 // @updateURL    https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
 // @downloadURL  https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js
@@ -598,8 +598,8 @@
     <input type="radio" name="cwlsp" id="cwlsp-log">
     <label for="cwlsp-log" title="Messages & Logs">📜</label>
 
-    <input type="radio" name="cwlsp" id="cwlsp-settings">
-    <label for="cwlsp-settings" title="Settings">⚙️</label>
+    <input type="radio" name="cwlsp" id="cwlsp-about">
+    <label for="cwlsp-about" title="About">❔</label>
   </div>
 </div>
       <div id="lspDialogTabs">
@@ -607,7 +607,19 @@
         <div id='cwlsp-logPanel'>
             <ul style="font-family: monospace; list-style: none; margin: 0; line-height: 1em;"/>
         </div>
-        <div id='cwlsp-settingsPanel' class="prose"></div>
+        <div id='cwlsp-aboutPanel' class="prose">
+            <h1>Codewars LSP</h1>
+            <p><code>cw-lsp</code> is a community extension for Codewars which adds Language Server Protocol support to Codewars trainer.</p>
+            <p>Visit <code>cw-lsp</code> on <a href="https://github.com/hobovsky/cw-lsp">Github</a> for (some) details.</p>
+            <hr/>
+            <h2>Keys</h2>
+            <p><code>cw-lsp</code> uses following key shortcuts:</p>
+            <ul>
+                <li><kbd><kbd>Shift</kbd>-<kbd>Space</kbd></kbd> - show code completion suggestions. <kbd>Enter</kbd> to insert currently selected suggestion, <kbd>Esc</kbd> to dismiss.</li>
+                <li><kbd><kbd>Alt</kbd>-<kbd>A</kbd></kbd> - show function signature help when typing a function call.</li>
+                <li><kbd><kbd>Alt</kbd>-<kbd>H</kbd></kbd> - show documentation of a symbol under caret.</li>
+            </ul>
+        </div>
       </div>
     </div>`);
         jQuery( "#cwlsp-toolbar" ).buttonset();
