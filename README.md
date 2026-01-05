@@ -1,6 +1,6 @@
 # `cw-lsp` - Language Server Integration for Codewars Code Editors
 
-`cw-lsp` is a Tampermonkey user script which turns Codewars code editors into Language Server Protocol clients and enriches them with some basic IDE-like functionality. It currently supports:
+`cw-lsp` is a browser-side extension (implemented as a Tampermonkey userscript) that turns Codewars code editors into Language Server Protocol clients and enriches them with some basic IDE-like functionality. It currently supports:
 
 - Language Server Protocol features: code completions, callable signatures, code diagnostics, documentation;
 - Languages: JavaScript, Python, PHP, Rust;
@@ -11,7 +11,8 @@
 
 To use code completion when training on a Codewars kata, only the client userscript is required:
 
-- Install Tampermonkey user script with client side implementation. It can be found in `client/cw-lsp.user.js`. Read [TamperMonkey FAQ](https://www.tampermonkey.net/faq.php?locale=en) for help. Remember about enabling [userscript permissions and/or Development Mode](https://www.tampermonkey.net/faq.php?locale=en#Q209) if your browser requires it!
+- Install [Tampermonkey](www.tampermonkey.net) extension for your browser.
+- Install the user script with client side implementation. It can be found in `client/cw-lsp.user.js`, and installed by clicking [this link](https://github.com/hobovsky/cw-lsp/raw/refs/heads/main/client/cw-lsp.user.js). Read [TamperMonkey FAQ](https://www.tampermonkey.net/faq.php?locale=en) for help. Remember about enabling [userscript permissions and/or Development Mode](https://www.tampermonkey.net/faq.php?locale=en#Q209) if your browser requires it!
 - Open kata trainer for one of supported languages.
 - Start typing code in the `Solution` editor. Use one of following key combinations:
   - `Shift-Space` to trigger completion suggestions.
