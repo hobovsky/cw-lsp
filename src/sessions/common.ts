@@ -158,7 +158,7 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
 
 export function registerDefaultWorkspaceConfigurationHandler(trainerSessionId: string, connection: MessageConnection) {
     connection.onRequest("workspace/configuration", (params: any) => {
-        console.info("Dummy handler invoked: workspace/configuration", params);
+        console.info("Dummy handler invoked: workspace/configuration", JSON.stringify(params));
         const items = (params?.items ?? []) as unknown[];
         return items.map(() => null);
     });
@@ -171,22 +171,22 @@ export function registerDefaultServerRequestHandlers(trainerSessionId: string, c
     // TODO: implement these handlers properly (or narrow them per language server).
 
     connection.onRequest("client/registerCapability", (params: any) => {
-        console.info("Dummy handler invoked: client/registerCapability", params);
+        console.info("Dummy handler invoked: client/registerCapability", JSON.stringify(params));
         return null;
     });
 
     connection.onRequest("client/unregisterCapability", (params: any) => {
-        console.info("Dummy handler invoked: client/unregisterCapability", params);
+        console.info("Dummy handler invoked: client/unregisterCapability", JSON.stringify(params));
         return null;
     });
 
     connection.onRequest("window/showMessageRequest", (params: ShowMessageRequestParams) => {
-        console.info("Dummy handler invoked: window/showMessageRequest", params);
+        console.info("Dummy handler invoked: window/showMessageRequest", JSON.stringify(params));
         return null;
     });
 
     connection.onRequest("workspace/workspaceFolders", (params: any) => {
-        console.info("Dummy handler invoked: workspace/workspaceFolders", params);
+        console.info("Dummy handler invoked: workspace/workspaceFolders", JSON.stringify(params));
         return [];
     });
 }
