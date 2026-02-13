@@ -34,14 +34,19 @@ app.post('/init_lsp_session', async (req, res) => {
           initialCode: string
       }>;
       
-      console.info(`Init request for session: ${requestParams.trainerSessionId}`)
+      const { userId, kataId, language } = requestParams.data.sessionInfo;
+      console.info(
+        `Init request: trainerSessionId=${requestParams.trainerSessionId}, userId=${userId}, kataId=${kataId}, language=${language}`
+      );
 
       let session = await initLspSession(
         requestParams.trainerSessionId, 
         requestParams.data.sessionInfo, 
         requestParams.data.initialCode);
 
-      console.info(`LSP session initiated with process pid=${session.languageServer.process.pid ?? 'unknown' }`);
+      console.info(
+        `LSP session initiated: trainerSessionId=${requestParams.trainerSessionId}, userId=${userId}, kataId=${kataId}, language=${language}, pid=${session.languageServer.process.pid ?? 'unknown'}`
+      );
       let response = { ok: true, serverCapabilities: session.languageServer.serverCapabilities };
       res.send(response);
 
@@ -59,8 +64,6 @@ app.post('/init_lsp_session', async (req, res) => {
 });
 
 app.post('/update_doc', async (req, res) => {
-    console.info("update_doc request received.");
-
     try {
       const requestParams = req.body as LspServiceResponse<{ 
         updatedContent?: string,
